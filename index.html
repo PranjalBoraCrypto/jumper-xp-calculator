@@ -89,7 +89,7 @@ main,footer,.nav{position:relative; z-index:1}
 .lead{color:var(--muted); font-size:17px; max-width:520px; margin:18px 0 0}
 
 /* ===== calculator ===== */
-.calc{display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:44px; align-items:start}
+.calc{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; margin-top:44px; align-items:start}
 .panel{background:var(--glass); border:1px solid var(--line); border-radius:var(--r); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); box-shadow:0 40px 100px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05)}
 .input-panel{padding:28px; scroll-margin-top:84px}
 .lab{display:flex; justify-content:space-between; align-items:baseline; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); font-weight:600; margin-bottom:12px}
@@ -118,6 +118,7 @@ main,footer,.nav{position:relative; z-index:1}
 .chip{border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--muted); border-radius:999px; padding:9px 14px; font-size:13.5px; font-weight:500; cursor:pointer; transition:all .25s var(--ease)}
 .chip:hover{color:var(--ink); border-color:rgba(196,169,245,.4); transform:translateY(-1px)}
 .chip.on{color:#fff; border-color:transparent; background:linear-gradient(135deg,#7c3aed,#e15ff5); box-shadow:0 8px 24px rgba(225,95,245,.3)}
+.chips .br{flex-basis:100%; height:0}
 .chip.custom{display:inline-flex; align-items:center; gap:6px; padding:5px 6px 5px 14px}
 .chip.custom input{width:86px; border:0; background:rgba(8,3,20,.6); color:var(--ink); border-radius:999px; padding:5px 10px; outline:none; font-family:var(--display); font-weight:600; font-size:13px}
 .chip.custom input::-webkit-outer-spin-button,.chip.custom input::-webkit-inner-spin-button{-webkit-appearance:none}
@@ -192,7 +193,7 @@ input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;bac
 .result:hover .holo{opacity:1}
 .result .glare{position:absolute; inset:-40%; background:radial-gradient(circle at var(--gx,50%) var(--gy,50%), rgba(255,255,255,.05), transparent 38%); pointer-events:none; mix-blend-mode:screen; opacity:0; transition:opacity .35s; z-index:2}
 .result:hover .glare{opacity:1}
-.card-body{position:relative; z-index:1; display:grid; grid-template-columns:240px 1fr; gap:0; min-height:400px}
+.card-body{position:relative; z-index:1; display:grid; grid-template-columns:240px minmax(0,1fr); gap:0; min-height:400px}
 .card-left{padding:30px 26px; border-right:1px solid rgba(255,255,255,.07); display:flex; flex-direction:column; align-items:center; text-align:center; justify-content:center; gap:10px; background:rgba(255,255,255,.02)}
 .emblem svg{width:100%; height:100%; display:block}
 .emblem{width:170px; height:170px; filter:drop-shadow(0 20px 40px var(--tglow)); transform:translateZ(50px); animation:floaty 6s ease-in-out infinite}
@@ -201,7 +202,7 @@ input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;bac
 .tier-sub{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:600; transform:translateZ(30px)}
 .tier-line{font-size:13px; color:var(--muted); line-height:1.5; max-width:210px; transform:translateZ(30px)}
 .tier-num{position:absolute; top:16px; left:18px; font-family:var(--display); font-weight:800; font-size:12px; letter-spacing:.14em; color:var(--muted); padding:5px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.12)}
-.card-right{padding:28px 30px; display:flex; flex-direction:column; justify-content:center}
+.card-right{padding:28px 30px; display:flex; flex-direction:column; justify-content:center; min-width:0} .card-right > *{min-width:0}
 .card-right .head{display:flex; justify-content:space-between; align-items:center; gap:10px; transform:translateZ(30px)}
 .card-right .head .t{font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); font-weight:600}
 .rank{font-size:12.5px; font-weight:600; color:var(--lav); padding:7px 12px; border-radius:999px; border:1px solid rgba(196,169,245,.3); background:rgba(196,169,245,.08); white-space:nowrap}
@@ -209,16 +210,16 @@ input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;bac
 .xp small{font-size:.32em; color:var(--muted); font-weight:600; margin-left:10px; letter-spacing:-.01em}
 .value{margin-top:18px; padding:18px 20px; border-radius:20px; background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.1); transform:translateZ(36px); position:relative; overflow:hidden}
 .value::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(var(--tc2),var(--tc1))}
-.value .l{font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:600} .value .l b{color:var(--ink)}
+.value .l{font-size:12px; letter-spacing:.01em; text-transform:none; color:var(--muted); font-weight:600; line-height:1.45} .value .l span{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis} .value .l b{color:var(--ink)}
 .value .v{font-family:var(--display); font-weight:800; font-size:clamp(36px,4.2vw,58px); letter-spacing:-.04em; line-height:1.05; margin-top:4px; background:linear-gradient(92deg,#fff 20%,var(--tc2)); -webkit-background-clip:text; background-clip:text; color:transparent}
-.value .s{color:var(--muted); font-size:12.5px; margin-top:6px}
+.value .s{color:var(--muted); font-size:12.5px; margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .value.ineligible .v{background:none; color:#ffb3c6; -webkit-text-fill-color:#ffb3c6}
 .pass{margin-top:12px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.04); border:1px solid var(--line); transform:translateZ(26px)}
 .pass .pl{display:flex; justify-content:space-between; align-items:baseline; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:600}
 .pass .pl b{white-space:nowrap; font-family:var(--display); font-weight:800; font-size:16px; letter-spacing:-.02em; text-transform:none; background:linear-gradient(92deg,#fff,var(--tc2)); -webkit-background-clip:text; background-clip:text; color:transparent}
 .pass .pbar{height:6px; border-radius:99px; background:rgba(255,255,255,.08); margin-top:8px; overflow:hidden}
 .pass .pbar i{display:block; height:100%; width:0; border-radius:99px; background:linear-gradient(90deg,var(--tc1),var(--tc2)); transition:width 1s var(--ease)}
-.pass .ps{font-size:11.5px; color:var(--muted); margin-top:6px}
+.pass .ps{font-size:11.5px; color:var(--muted); margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px; transform:translateZ(24px)}
 .cell{padding:11px 13px; border-radius:16px; background:rgba(255,255,255,.04); border:1px solid var(--line)}
 .cell .k{font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:600} .cell .v{font-family:var(--display); font-weight:700; font-size:17px; margin-top:4px; letter-spacing:-.02em}
@@ -414,14 +415,14 @@ footer .gl{height:1px; background:linear-gradient(90deg,transparent,rgba(225,95,
           <div class="dial">
             <div class="lab"><span>Fully diluted valuation</span><b id="fdvLabel">$100M</b></div>
             <div class="chips" id="fdvChips">
-              <button class="chip" data-v="50000000">$50M</button><button class="chip on" data-v="100000000">$100M</button><button class="chip" data-v="250000000">$250M</button><button class="chip" data-v="500000000">$500M</button><button class="chip" data-v="1000000000">$1B</button>
+              <button class="chip" data-v="50000000">$50M</button><button class="chip on" data-v="100000000">$100M</button><button class="chip" data-v="250000000">$250M</button><button class="chip" data-v="500000000">$500M</button><button class="chip" data-v="1000000000">$1B</button><span class="br"></span>
               <label class="chip custom">custom $<input id="fdvCustom" type="text" placeholder="e.g. 300M" inputmode="decimal"></label>
             </div>
           </div>
           <div class="dial">
             <div class="lab"><span>Airdrop · share of supply to XP</span><b id="pctLabel">10%</b></div>
             <div class="chips" id="pctChips">
-              <button class="chip" data-v="5">5%</button><button class="chip on" data-v="10">10%</button><button class="chip" data-v="15">15%</button><button class="chip" data-v="20">20%</button><button class="chip" data-v="30">30%</button>
+              <button class="chip" data-v="5">5%</button><button class="chip on" data-v="10">10%</button><button class="chip" data-v="15">15%</button><button class="chip" data-v="20">20%</button><button class="chip" data-v="30">30%</button><span class="br"></span>
               <label class="chip custom">custom <input id="pctCustom" type="number" min="0.1" max="100" step="0.1" placeholder="%" inputmode="decimal"></label>
             </div>
             <input id="pct" type="range" min="1" max="100" step="0.5" value="10" aria-label="Airdrop percentage">
@@ -484,7 +485,7 @@ footer .gl{height:1px; background:linear-gradient(90deg,transparent,rgba(225,95,
                   <div class="head"><span class="t" id="resTag">Your Jumper XP</span><span class="rank" id="resRank">—</span></div>
                   <div class="xp"><span id="resXp">0</span><small>XP</small></div>
                   <div class="value" id="valueBox">
-                    <div class="l">Worth at <b id="valFdv">$100M</b> FDV · <b id="valPct">10%</b> airdrop · <b id="valElig">everyone</b></div>
+                    <div class="l"><span>At <b id="valFdv">$100M</b> FDV · <b id="valPct">10%</b> airdrop</span><span>Who qualifies: <b id="valElig">everyone</b></span></div>
                     <div class="v" id="resVal">$0</div>
                     <div class="s" id="resShare">0% of the pool</div>
                   </div>

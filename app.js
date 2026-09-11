@@ -223,7 +223,7 @@ function render(animate) {
   $('valueBox').classList.toggle('ineligible', !c.eligible);
   $('eqXp').textContent = fmtInt(c.xp); $('eqTotal').textContent = isFinite(c.poolXp) ? fmtBig(c.poolXp) : 'tiered';
   $('valFdv').textContent = fmtMoney(state.fdv); $('valPct').textContent = pctText(state.pct); $('valElig').textContent = eligSummary();
-  $('resShare').textContent = !c.eligible ? (state.elig === 'min' ? `Below the ${fmtInt(state.minXp)} XP cutoff` : state.elig === 'top' ? `Outside the top ${fmtInt(state.topN)}` : state.elig === 'level' ? `Below Pass Level ${state.minLevel}` : 'No ranked XP') : isFinite(c.poolXp) ? (c.eligibleXp / c.poolXp * 100).toFixed(5) + '% of the eligible pool' : 'Tiered split · pro-rata inside your tier';
+  $('resShare').textContent = !c.eligible ? (state.elig === 'min' ? `Below the ${fmtInt(state.minXp)} XP cutoff` : state.elig === 'top' ? `Outside the top ${fmtInt(state.topN)}` : state.elig === 'level' ? `Below Pass Level ${state.minLevel}` : 'No ranked XP') : isFinite(c.poolXp) ? (c.eligibleXp / c.poolXp * 100).toFixed(5) + '% of eligible XP' : 'Pro-rata inside your tier';
   $('resPerPct').textContent = fmtMoney(c.perPct); $('resPerXp').textContent = fmtMoney(c.perXp); $('resWallets').textContent = state.results.length;
   const lvW = state.results.slice().sort((x, y) => (y.points || 0) - (x.points || 0))[0], lv = JXP.levelFor(lvW ? lvW.points : 0);
   $('passLevel').textContent = 'Level ' + lv.level + (multi ? ' · ' + (lvW.chain === 'solana' ? 'SOL' : 'EVM') : '');
