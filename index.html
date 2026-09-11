@@ -64,13 +64,13 @@ main,footer,.nav{position:relative; z-index:1}
 .in .sub{opacity:1; transform:none}
 .hero-cta{display:flex; gap:12px; margin-top:34px; opacity:0; transform:translateY(16px); transition:all 1s var(--ease) .45s}
 .in .hero-cta{opacity:1; transform:none}
-.hero-art{position:relative; height:520px; display:grid; place-items:center}
-.hero-art .logo-wrap{width:min(380px,70%); aspect-ratio:1; opacity:0; transform:scale(.9); transition:opacity 1.2s var(--ease) .2s, transform 1.2s var(--ease) .2s; position:relative; z-index:2}
+.hero .hero-art{position:relative; height:520px; display:flex; align-items:center; justify-content:center}
+.hero-art .logo-wrap{width:min(380px,70%); aspect-ratio:1; flex:0 0 auto; opacity:0; transform:scale(.9); transition:opacity 1.2s var(--ease) .2s, transform 1.2s var(--ease) .2s; position:relative; z-index:2}
 .in .hero-art .logo-wrap{opacity:1; transform:none}
 .hero-art .logo{width:100%; aspect-ratio:1; border-radius:22%; box-shadow:0 60px 120px rgba(0,0,0,.55), 0 0 120px rgba(225,95,245,.18); will-change:transform}
-.hero-art .halo{position:absolute; width:520px; height:520px; border-radius:50%; background:radial-gradient(circle,rgba(225,95,245,.28),rgba(139,92,246,.12) 40%,transparent 70%); filter:blur(20px); will-change:transform}
-.hero-art .ring{position:absolute; width:460px;height:460px; border-radius:50%; border:1px solid rgba(196,169,245,.18); will-change:transform}
-.hero-art .ring.r2{width:600px;height:600px; border-color:rgba(196,169,245,.09)}
+.hero-art .halo{position:absolute; left:50%; top:50%; margin:-260px 0 0 -260px; width:520px; height:520px; border-radius:50%; background:radial-gradient(circle,rgba(225,95,245,.28),rgba(139,92,246,.12) 40%,transparent 70%); filter:blur(20px); will-change:transform}
+.hero-art .ring{position:absolute; left:50%; top:50%; margin:-230px 0 0 -230px; width:460px;height:460px; border-radius:50%; border:1px solid rgba(196,169,245,.18); will-change:transform}
+.hero-art .ring.r2{width:600px;height:600px; margin:-300px 0 0 -300px; border-color:rgba(196,169,245,.09)}
 .giant{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-family:var(--display); font-weight:800; font-size:clamp(200px,34vw,520px); letter-spacing:-.06em; color:transparent; -webkit-text-stroke:1px rgba(196,169,245,.10); pointer-events:none; user-select:none; white-space:nowrap; will-change:transform; z-index:-1}
 .scroll-cue{position:absolute; left:50%; bottom:26px; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--dim); font-size:11px; letter-spacing:.2em; text-transform:uppercase}
 .scroll-cue i{width:1px; height:44px; background:linear-gradient(var(--lav),transparent); display:block; animation:cue 1.8s infinite}
@@ -91,7 +91,7 @@ main,footer,.nav{position:relative; z-index:1}
 /* ===== calculator ===== */
 .calc{display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:44px; align-items:start}
 .panel{background:var(--glass); border:1px solid var(--line); border-radius:var(--r); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); box-shadow:0 40px 100px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05)}
-.input-panel{padding:28px}
+.input-panel{padding:28px; scroll-margin-top:84px}
 .lab{display:flex; justify-content:space-between; align-items:baseline; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); font-weight:600; margin-bottom:12px}
 .lab b{color:var(--ink); font-family:var(--display); font-size:18px; letter-spacing:-.02em; text-transform:none}
 .addr{width:100%; min-height:112px; resize:vertical; border-radius:18px; padding:18px 18px 18px 52px; color:var(--ink); background:rgba(8,3,20,.7); border:1px solid var(--line); outline:none; font-family:var(--mono); font-size:13.5px; line-height:1.7; transition:border-color .25s, box-shadow .3s}
@@ -157,7 +157,7 @@ input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;bac
 .seg button small{font-size:10px; color:var(--dim); line-height:1.2}
 .seg button:hover{transform:translateY(-2px); border-color:rgba(196,169,245,.4)} .seg button:hover i{transform:scale(1.15); filter:none}
 .seg button.on{border-color:transparent; background:linear-gradient(135deg,#7c3aed,#e15ff5); box-shadow:0 10px 30px rgba(225,95,245,.35)} .seg button.on i{filter:none; transform:scale(1.15)} .seg button.on span,.seg button.on small{color:#fff}
-.elig-body{margin-top:14px} .elig-body[hidden]{display:none}
+.elig-bodies{display:grid; margin-top:14px} .elig-body{grid-area:1/1; min-width:0} .elig-body[hidden]{display:block; visibility:hidden; pointer-events:none}
 .inline-field{display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted); flex-wrap:wrap}
 .inline-field input{width:120px; border:1px solid var(--line); background:rgba(8,3,20,.6); color:var(--ink); border-radius:12px; padding:10px 12px; outline:none; font-family:var(--display); font-weight:700; font-size:15px}
 .inline-field input:focus{border-color:rgba(225,95,245,.6)}
@@ -225,7 +225,7 @@ input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;bac
 .wtable{margin-top:14px; transform:translateZ(18px)} .wtable table{width:100%; border-collapse:collapse; font-size:13px}
 .wtable th{text-align:left; color:var(--dim); font-weight:600; font-size:10px; letter-spacing:.12em; text-transform:uppercase; padding:0 0 6px}
 .wtable td{padding:7px 0; border-top:1px solid var(--line); font-family:var(--mono); font-size:12px} .wtable td.r{text-align:right; font-family:var(--display); font-weight:700; font-size:13.5px} .wtable td.d{color:var(--dim)}
-.share{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap} .share .btn{padding:13px 18px; font-size:14px; border-radius:14px}
+.share{display:none; gap:10px; margin-top:16px; flex-wrap:wrap} .share.show{display:flex} .share-hint{display:none} .share-hint.show{display:block} .share .btn{padding:13px 18px; font-size:14px; border-radius:14px}
 .share-hint{font-size:12px; color:var(--dim); margin-top:10px}
 .empty{position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:40px; color:var(--muted); z-index:3}
 .empty .big{font-family:var(--display); font-weight:700; font-size:24px; color:var(--ink); letter-spacing:-.02em; margin-bottom:8px}
@@ -329,18 +329,19 @@ footer .gl{height:1px; background:linear-gradient(90deg,transparent,rgba(225,95,
   .hero-art{display:flex; flex-direction:column; align-items:center} .spin-hud{position:static; transform:none; margin-top:26px; gap:10px; flex-wrap:wrap; justify-content:center} .spin-stats{gap:10px} .spin-stats .ke{width:40px} .hero-art .halo{width:260px;height:260px} .hero-art .ring,.hero-art .ring.r2{display:none}
   .giant{font-size:150px; top:36%}
   .sub{margin-inline:auto} .hero-cta{justify-content:center}
+  .mob-tag{margin-bottom:14px} .mob-tag .tag{font-size:10px; padding:5px 11px}
   .scroll-cue{display:none}
   .section{padding:56px 18px}
   .calc{grid-template-columns:1fr; gap:16px} .stage{position:static; order:-1} .result{transform:none!important; animation:none} .result .inner{min-height:0}
   .card-body{grid-template-columns:1fr; min-height:0} .card-left{border-right:0; border-bottom:1px solid rgba(255,255,255,.07); padding:20px 20px 22px} .tier-num{position:static; margin-bottom:10px} .card-left{gap:12px} .emblem{width:140px;height:140px; margin-bottom:6px} .card-right{padding:22px 20px}
   .ladder{grid-template-columns:repeat(5,1fr); gap:6px} .rung svg{width:44px;height:44px} .rung .n{font-size:11px} .rung .p{display:none}
-  .seg{grid-template-columns:repeat(3,1fr); gap:6px} .seg button{padding:10px 4px 8px} .seg button small{display:none} .elig-panel{padding:16px} .tiers-edit{grid-template-columns:auto 1fr 1fr}
+  .seg{grid-template-columns:repeat(3,1fr); gap:6px} .seg button{padding:10px 4px 8px} .seg button small{display:none} .elig-panel{padding:16px} .elig-head h3{font-size:19px} .elig-head b{font-size:13px; padding:5px 10px} .tiers-edit .h{white-space:nowrap; font-size:10px} .tiers-edit{grid-template-columns:auto 1fr 1fr}
   .input-panel{padding:22px} .row{flex-direction:column} .row .btn{width:100%}
   .grid3{grid-template-columns:repeat(3,1fr); gap:6px} .cell{padding:10px 8px} .cell .v{font-size:14px} .cell .k{font-size:9px}
   .foot{grid-template-columns:1fr; text-align:center; padding-bottom:90px} .by{justify-content:center} .foot .r{text-align:center}
   .meta{flex-direction:column; gap:4px}
   .wfield .wl em{display:none} .winput{font-size:12.5px} .meta span:last-child{display:none}
-  .share{display:grid; grid-template-columns:1fr 1fr; gap:8px} .share .btn,.share .mask-btn{width:100%; justify-content:center; padding:13px 10px; font-size:13.5px}
+  .share.show{display:grid; grid-template-columns:1fr 1fr; gap:8px} .share .btn,.share .mask-btn{width:100%; justify-content:center; padding:13px 6px; font-size:13px; white-space:nowrap; min-width:0}
   .ladder{padding-top:14px; gap:6px} .rung{padding:14px 4px 10px} .rung.me{transform:translateY(-4px) scale(1)} .rung .you{top:-9px}
   .eq{grid-template-columns:1fr 1fr; gap:8px} .op{display:none} .term{padding:16px 14px; border-radius:18px} .term .v{font-size:24px} .term .d{font-size:11.5px; margin-top:8px} .term.total{grid-column:1/-1; text-align:center}
   .tiers-edit input{padding:8px 8px; font-size:13px}
@@ -365,10 +366,11 @@ footer .gl{height:1px; background:linear-gradient(90deg,transparent,rgba(225,95,
     <div class="giant" data-py="0.35">XP</div>
     <div class="hero-grid">
       <div class="hero-copy" data-py="-0.12">
+        <div class="mob-tag mob"><span class="tag">unofficial</span></div>
         <div class="kicker"><span class="dot"></span> Live from Jumper's leaderboard · EVM + Solana</div>
         <h1 class="h1"><span class="line"><span>Your Jumper</span></span><span class="line"><span class="grad">XP, priced.</span></span></h1>
         <p class="sub">Paste a wallet. See your XP, your rank among <b id="hWallets">2.77M</b> wallets, and what your slice could be worth at any FDV and airdrop size.</p>
-        <div class="hero-cta"><a class="btn" href="#calc">Check my XP</a><a class="btn ghost" href="#how">See the math</a></div>
+        <div class="hero-cta"><a class="btn" href="#calc" id="heroGo">Check my XP</a><a class="btn ghost" href="#how">See the math</a></div>
       </div>
       <div class="hero-art desk">
         <div class="halo" data-py="0.18"></div>
@@ -438,6 +440,7 @@ footer .gl{height:1px; background:linear-gradient(90deg,transparent,rgba(225,95,
             <button data-m="top"><i>🏆</i><span>Top N</span><small>By rank</small></button>
             <button data-m="level"><i>🎫</i><span>Pass Level</span><small>Level N+</small></button>
           </div>
+          <div class="elig-bodies">
           <div class="elig-body" id="elig-all" hidden><div class="elig-note">Every wallet with XP shares the pool pro-rata. <b id="nAll">2.77M</b> wallets qualify.</div></div>
           <div class="elig-body" id="elig-min" hidden>
             <div class="inline-field">Ignore wallets below <input id="minXp" type="number" min="1" value="100" inputmode="numeric"> XP</div>
@@ -453,10 +456,11 @@ footer .gl{height:1px; background:linear-gradient(90deg,transparent,rgba(225,95,
           </div>
           <div class="elig-body" id="elig-tier">
             <div class="tiers-edit" id="tiersEdit">
-              <div class="h">Tier</div><div class="h">Ranks up to</div><div class="h">% of airdrop</div>
+              <div class="h">Tier</div><div class="h">Ranks up to</div><div class="h">Share %</div>
             </div>
             <div class="tiers-sum" id="tiersSum"></div>
             <div class="elig-note">Each tier's slice is split pro-rata by XP inside that tier. Bottom tier is everyone below the last cutoff.</div>
+          </div>
           </div>
         </div>
       </div>
@@ -500,8 +504,8 @@ footer .gl{height:1px; background:linear-gradient(90deg,transparent,rgba(225,95,
             </div>
           </div>
         </div>
-        <div class="share" id="shareRow" style="display:none"><button class="mask-btn" id="maskBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="maskTxt">Hide addresses</span></button><button class="btn" id="shareX">Share on X</button><button class="btn ghost" id="dlCard">Download card</button><button class="btn ghost" id="copyCard">Copy image</button></div>
-        <div class="share-hint" id="shareHint" style="display:none">X strips images from links — download or copy the card, then attach it to your post.</div>
+        <div class="share" id="shareRow"><button class="mask-btn" id="maskBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span id="maskTxt">Hide addresses</span></button><button class="btn" id="shareX">Share on X</button><button class="btn ghost" id="dlCard">Download card</button><button class="btn ghost" id="copyCard">Copy image</button></div>
+        <div class="share-hint" id="shareHint">X strips images from links — download or copy the card, then attach it to your post.</div>
       </div>
     </div>
   </section>

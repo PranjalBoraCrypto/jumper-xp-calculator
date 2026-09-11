@@ -53,7 +53,7 @@ function frame() {
       const spin = el.id === 'spinner' ? `rotate(${el.dataset.spin || 0}deg)` : '';
       el.style.transform = `${base}translate3d(0, ${-rel * vh * py}px, 0) ${rot ? `rotate(${rel * rot * 180}deg)` : ''} ${mouse} ${spin}`;
     }
-    if (heroCopy) { const k = Math.min(1, sy / (vh * .7)); heroCopy.style.opacity = 1 - k * .9; }
+    if (heroCopy) { const k = isD ? Math.min(1, sy / (vh * .7)) : 0; heroCopy.style.opacity = 1 - k * .9; }
     tickX -= .6 + Math.min(12, Math.abs(vel) * .35); const w = tick.scrollWidth / 4; if (-tickX > w) tickX += w; tick.style.transform = `translate3d(${tickX}px,0,0)`;
   }
   nav.classList.toggle('scrolled', sy > 20);
@@ -108,6 +108,9 @@ const parseAddrs = () => { const f = fieldState(); const out = []; if (f.e) out.
 [addrEvm, addrSol].forEach((el) => { el.addEventListener('input', fieldState); el.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(false); }); });
 $('demo').addEventListener('click', () => { addrEvm.value = '0x1234567890abcdef1234567890abcdef12345678'; addrSol.value = ''; fieldState(); lookup(true); });
 $('go').addEventListener('click', () => lookup(false));
+// Hero button: take the user to the wallet field and open the keyboard, so the tap has an obvious effect
+$('heroGo').addEventListener('click', (e) => { e.preventDefault(); const panel = document.querySelector('.input-panel'); panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => addrEvm.focus({ preventScroll: true }), 500); });
+document.querySelector('.nav .cta').addEventListener('click', (e) => { e.preventDefault(); document.querySelector('.input-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => addrEvm.focus({ preventScroll: true }), 500); });
 function notice(id, msg) { const el = $(id); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
 const maskAddr = (a) => (a.startsWith('0x') ? '0x' : '') + '••••••••••••';
 $('maskBtn').addEventListener('click', () => { state.mask = !state.mask; $('maskBtn').setAttribute('aria-pressed', state.mask); $('maskTxt').textContent = state.mask ? 'Show addresses' : 'Hide addresses'; render(false); });
@@ -136,7 +139,7 @@ async function lookup(demo) {
     await finishLoader();
     state.results = results; lastXp = -1; render(true);
     const card = $('result'); card.classList.remove('reveal'); void card.offsetWidth; card.classList.add('reveal'); card.addEventListener('animationend', function h(ev) { if (ev.animationName === 'flipIn') { card.classList.remove('reveal'); card.removeEventListener('animationend', h); } });
-  } catch (e) { stopLoader(); notice('err', e.message === 'Failed to fetch' ? 'Could not reach the API. Deploy on Vercel so /api/xp exists.' : e.message); if (!state.results) $('resultEmpty').style.display = 'grid'; }
+  } catch (e) { stopLoader(); const msg = e.message === 'Failed to fetch' ? 'Could not reach the API. Deploy on Vercel so /api/xp exists.' : e.message; notice('err', msg); if (!state.results) { $('resultEmpty').style.display = 'grid'; $('resultEmpty').querySelector('.big').textContent = 'Lookup failed'; $('resultEmpty').querySelector('div').lastChild.textContent = msg; } if (!desktop()) $('err').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   finally { go.disabled = false; $('goTxt').textContent = 'Check my XP'; }
 }
 
@@ -209,7 +212,7 @@ let lastXp = -1;
 function render(animate) {
   if (!state.results) return;
   const c = calc(), multi = state.results.length > 1, t = c.tier;
-  $('resultEmpty').style.display = 'none'; $('resultBody').style.display = 'grid'; $('shareRow').style.display = 'flex'; $('shareHint').style.display = 'block';
+  $('resultEmpty').style.display = 'none'; $('resultBody').style.display = 'grid'; $('shareRow').classList.add('show'); $('shareHint').classList.add('show');
   const card = $('result'); card.style.setProperty('--tc1', t.c1); card.style.setProperty('--tc2', t.c2); card.style.setProperty('--tglow', t.glow);
   if (card.dataset.tier !== String(t.id)) { $('emblem').innerHTML = JXP.emblemSVG(t, 170); card.dataset.tier = t.id; }
   $('tierNum').textContent = `TIER ${t.id} / 10`; $('tierName').textContent = t.name; $('tierLine').textContent = t.line;
