@@ -75,7 +75,7 @@ function countUp(el, to, fmt, ms = 1200) {
 }
 
 /* ---------- state + dials ---------- */
-const state = { fdv: 1e8, pct: 10, results: null, mask: false, elig: 'tier', minXp: 100, topN: 100000, minLevel: 10, tiers: [{ upTo: 1000, share: 25 }, { upTo: 10000, share: 30 }, { upTo: 100000, share: 30 }, { upTo: Infinity, share: 15 }] };
+const state = { fdv: 1e8, pct: 10, results: null, mask: false, elig: 'tier', minXp: 100, topN: 100000, minLevel: 10, multOn: true, mults: [{ from: 10, to: 15, m: 1 }, { from: 16, to: 20, m: 1.5 }, { from: 21, to: 30, m: 2 }, { from: 31, to: 100, m: 2.5 }], tiers: [{ upTo: 1000, share: 25 }, { upTo: 10000, share: 30 }, { upTo: 100000, share: 30 }, { upTo: Infinity, share: 15 }] };
 const range = $('pct');
 function syncChips(id, v) { document.querySelectorAll(`#${id} .chip[data-v]`).forEach((c) => c.classList.toggle('on', +c.dataset.v === v)); }
 function setPct(v, from) {
@@ -163,7 +163,7 @@ function eligSummary() {
   if (state.elig === 'min') return `≥ ${fmtInt(state.minXp)} XP`;
   if (state.elig === 'top') return `top ${fmtBig(state.topN)}`;
   if (state.elig === 'tier') return 'tiered';
-  if (state.elig === 'level') return `Level ${state.minLevel}+`;
+  if (state.elig === 'level') return `Level ${state.minLevel}+` + (state.multOn ? ' · multipliers' : '');
   return 'everyone';
 }
 function setElig(m) {
@@ -176,6 +176,7 @@ function updateEligNotes() {
   const rMin = rankAtXp(state.minXp); $('nMin').textContent = fmtInt(rMin); $('xMin').textContent = (cumXp(rMin) / SNAPSHOT.totalXp * 100).toFixed(1) + '%';
   const n = Math.min(state.topN, SNAPSHOT.wallets); $('nTop').textContent = fmtInt(n); $('xTop').textContent = fmtInt(xpAtRank(n)); $('sTop').textContent = (cumXp(n) / SNAPSHOT.totalXp * 100).toFixed(1) + '%';
   const lvMin = JXP.LEVELS[Math.min(100, Math.max(1, state.minLevel)) - 1][1], rL = rankAtXp(lvMin); $('lvlN').textContent = state.minLevel; $('lvlXp').textContent = fmtInt(lvMin); $('nLvl').textContent = fmtInt(rL); $('xLvl').textContent = (cumXp(rL) / SNAPSHOT.totalXp * 100).toFixed(1) + '%';
+  if (state.results) { const best = state.results.slice().sort((x, y) => (y.points || 0) - (x.points || 0))[0]; const lvl = JXP.levelFor(best ? best.points : 0).level; $('multMine').textContent = (state.multOn ? multFor(lvl) : 1) + '×'; } $('multPool').textContent = fmtBig(weightedPool());
   const sum = state.tiers.reduce((a, t) => a + (+t.share || 0), 0); const el = $('tiersSum'); el.textContent = `Shares add up to ${sum}%` + (sum === 100 ? '' : ' — should be 100%'); el.classList.toggle('bad', sum !== 100);
 }
 document.querySelectorAll('#eligSeg button').forEach((b) => b.addEventListener('click', () => setElig(b.dataset.m)));
@@ -191,6 +192,23 @@ $('topN').addEventListener('input', (e) => { state.topN = Math.max(1, +e.target.
   box.addEventListener('input', (e) => { const i = +e.target.dataset.i, k = e.target.dataset.k; if (k) { state.tiers[i][k] = +e.target.value || 0; updateEligNotes(); render(false); } });
 })();
 
+/* ---------- level multipliers (Pass Level mode) ---------- */
+const lvlMin = (l) => JXP.LEVELS[Math.min(100, Math.max(1, l)) - 1][1];
+const lvlMax = (l) => JXP.LEVELS[Math.min(100, Math.max(1, l)) - 1][2];
+const xpBetween = (xLo, xHi) => Math.max(0, cumXp(rankAtXp(xLo)) - (xHi === Infinity ? 0 : cumXp(rankAtXp(xHi)))); // XP held by wallets with xLo <= xp < xHi
+function multFor(level) { for (const b of state.mults) if (level >= b.from && level <= b.to) return +b.m || 0; return 0; }
+function weightedPool() {
+  const lo = lvlMin(state.minLevel); if (!state.multOn) return xpBetween(lo, Infinity);
+  let pool = 0;
+  for (const b of state.mults) { const from = Math.max(b.from, state.minLevel); if (from > b.to) continue; pool += (+b.m || 0) * xpBetween(lvlMin(from), b.to >= 100 ? Infinity : lvlMax(b.to)); }
+  return pool;
+}
+(function buildMults() {
+  const box = $('multEdit');
+  state.mults.forEach((b, i) => box.insertAdjacentHTML('beforeend', `<div><input type="number" min="1" max="100" data-i="${i}" data-k="from" value="${b.from}" inputmode="numeric"></div><div><input type="number" min="1" max="100" data-i="${i}" data-k="to" value="${b.to}" inputmode="numeric"></div><div><input type="number" min="0" step="0.1" data-i="${i}" data-k="m" value="${b.m}" inputmode="decimal"></div>`));
+  box.addEventListener('input', (e) => { const i = +e.target.dataset.i, k = e.target.dataset.k; if (k) { state.mults[i][k] = +e.target.value || 0; updateEligNotes(); render(false); } });
+  $('multOn').addEventListener('change', (e) => { state.multOn = e.target.checked; box.classList.toggle('off', !state.multOn); updateEligNotes(); render(false); track('level_multipliers', { on: state.multOn }); });
+})();
 setElig('tier');
 
 /* ---------- valuation ---------- */
@@ -200,7 +218,7 @@ function calc() {
   let value = 0, poolXp = SNAPSHOT.totalXp, eligibleXp = 0, note = '';
   if (state.elig === 'all') { eligibleXp = xp; value = xp / poolXp * F; }
   else if (state.elig === 'min') { poolXp = cumXp(rankAtXp(state.minXp)); for (const r of rs) if ((r.points || 0) >= state.minXp) eligibleXp += r.points; value = eligibleXp / poolXp * F; }
-  else if (state.elig === 'level') { const lvMin = JXP.LEVELS[Math.min(100, Math.max(1, state.minLevel)) - 1][1]; poolXp = cumXp(rankAtXp(lvMin)); for (const r of rs) if ((r.points || 0) >= lvMin) eligibleXp += r.points; value = eligibleXp / poolXp * F; }
+  else if (state.elig === 'level') { const lvMin = lvlMin(state.minLevel); poolXp = weightedPool(); for (const r of rs) if ((r.points || 0) >= lvMin) { const m = state.multOn ? multFor(JXP.levelFor(r.points).level) : 1; eligibleXp += r.points * m; } value = eligibleXp / poolXp * F; }
   else if (state.elig === 'top') { const n = Math.min(state.topN, SNAPSHOT.wallets); poolXp = cumXp(n); for (const r of rs) if (r.position && r.position <= n) eligibleXp += r.points; value = eligibleXp / poolXp * F; }
   else {
     const cut = state.tiers.map((t) => (isFinite(t.upTo) ? Math.min(t.upTo, SNAPSHOT.wallets) : SNAPSHOT.wallets));
@@ -226,7 +244,7 @@ function render(animate) {
   $('valueBox').classList.toggle('ineligible', !c.eligible);
   $('eqXp').textContent = fmtInt(c.xp); $('eqTotal').textContent = isFinite(c.poolXp) ? fmtBig(c.poolXp) : 'tiered';
   $('valFdv').textContent = fmtMoney(state.fdv); $('valPct').textContent = pctText(state.pct); $('valElig').textContent = eligSummary();
-  $('resShare').textContent = !c.eligible ? (state.elig === 'min' ? `Below the ${fmtInt(state.minXp)} XP cutoff` : state.elig === 'top' ? `Outside the top ${fmtInt(state.topN)}` : state.elig === 'level' ? `Below Pass Level ${state.minLevel}` : 'No ranked XP') : isFinite(c.poolXp) ? (c.eligibleXp / c.poolXp * 100).toFixed(5) + '% of eligible XP' : 'Pro-rata inside your tier';
+  $('resShare').textContent = !c.eligible ? (state.elig === 'min' ? `Below the ${fmtInt(state.minXp)} XP cutoff` : state.elig === 'top' ? `Outside the top ${fmtInt(state.topN)}` : state.elig === 'level' ? `Below Pass Level ${state.minLevel}` : 'No ranked XP') : isFinite(c.poolXp) ? (c.eligibleXp / c.poolXp * 100).toFixed(5) + (state.elig === 'level' && state.multOn ? '% of the weighted pool' : '% of eligible XP') : 'Pro-rata inside your tier';
   $('resPerPct').textContent = fmtMoney(c.perPct); $('resPerXp').textContent = fmtMoney(c.perXp); $('resWallets').textContent = state.results.length;
   const lvW = state.results.slice().sort((x, y) => (y.points || 0) - (x.points || 0))[0], lv = JXP.levelFor(lvW ? lvW.points : 0);
   $('passLevel').textContent = 'Level ' + lv.level + (multi ? ' · ' + (lvW.chain === 'solana' ? 'SOL' : 'EVM') : '');
