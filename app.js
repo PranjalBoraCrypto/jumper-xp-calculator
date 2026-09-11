@@ -239,8 +239,8 @@ async function drawCard() {
   const em = await svgImage(JXP.emblemSVG(t, 400));
   // background
   const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#1b0e36'); g.addColorStop(.6, '#0e0620'); g.addColorStop(1, '#120826'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  const o1 = ctx.createRadialGradient(W * .2, 0, 0, W * .2, 0, W * .6); o1.addColorStop(0, t.glow); o1.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = o1; ctx.fillRect(0, 0, W, H);
-  const o2 = ctx.createRadialGradient(W, H, 0, W, H, W * .5); o2.addColorStop(0, 'rgba(225,95,245,.25)'); o2.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = o2; ctx.fillRect(0, 0, W, H);
+  const o1 = ctx.createRadialGradient(W * .2, 0, 0, W * .2, 0, W * .6); o1.addColorStop(0, t.glow); o1.addColorStop(1, 'rgba(0,0,0,0)'); ctx.save(); ctx.globalAlpha = .45; ctx.fillStyle = o1; ctx.fillRect(0, 0, W, H); ctx.restore();
+  const o2 = ctx.createRadialGradient(W, H, 0, W, H, W * .5); o2.addColorStop(0, 'rgba(225,95,245,.16)'); o2.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = o2; ctx.fillRect(0, 0, W, H);
   // texture: engineering grid (24px fine, 96px coarse) fading out where the content sits, plus an inset hairline frame and vignette
   ctx.save();
   const gridLayer = document.createElement('canvas'); gridLayer.width = W; gridLayer.height = H; const g2 = gridLayer.getContext('2d');
@@ -304,9 +304,10 @@ $('shareX').addEventListener('click', () => { const c = calc(); const text = `I'
   const up = () => { if (!dragging) return; dragging = false; el.classList.remove('grabbing'); if (Math.abs(vel) < 2) vel = (vel < 0 ? -1 : 1) * 14; if (navigator.vibrate && Math.abs(vel) > 8) navigator.vibrate(12); };
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
   el.addEventListener('click', (e) => e.preventDefault());
+  el.addEventListener('dragstart', (e) => e.preventDefault());
   (function tick() {
-    if (!dragging) { ang += vel; vel *= .985; if (Math.abs(vel) < .05) vel = 0; }
-    acc += Math.abs(dragging ? 0 : vel); if (acc >= 360) { spins += Math.floor(acc / 360); acc %= 360; $('spinCount').textContent = spins; }
+    if (!dragging) { ang += vel; vel *= .99; if (Math.abs(vel) < .05) vel = 0; }
+    acc += Math.abs(dragging ? ang - (tick.prev ?? ang) : vel); tick.prev = ang; if (acc >= 360) { spins += Math.floor(acc / 360); acc %= 360; $('spinCount').textContent = spins; }
     el.dataset.spin = ang.toFixed(2);
     requestAnimationFrame(tick);
   })();

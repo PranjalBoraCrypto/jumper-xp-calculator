@@ -11,7 +11,7 @@ window.JXP = (() => {
     { id: 7,  name: 'Vanguard',   pct: .01,    c1: '#ef4444', c2: '#fca5a5', glow: 'rgba(252,165,165,.45)', line: 'Top 1%. First through every new bridge.' },
     { id: 8,  name: 'Titan',      pct: .005,   c1: '#e15ff5', c2: '#ff8ff9', glow: 'rgba(255,143,249,.5)',  line: 'Top 0.5%. Liquidity moves when you do.' },
     { id: 9,  name: 'Legend',     pct: .001,   c1: '#facc15', c2: '#fff7ae', glow: 'rgba(255,247,174,.55)', line: 'Top 0.1%. They’ll tell stories about your wallet.' },
-    { id: 10, name: 'Apex',       pct: .0001,  c1: '#22d3ee', c2: '#ffffff', glow: 'rgba(255,255,255,.6)',  line: 'Top 0.01%. There is nothing above you.' },
+    { id: 10, name: 'Apex',       pct: .0001,  c1: '#06b6d4', c2: '#a5f3fc', glow: 'rgba(103,232,249,.45)',  line: 'Top 0.01%. There is nothing above you.' },
   ];
 
   function tierFor(position, wallets) {
