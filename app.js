@@ -73,7 +73,7 @@ function countUp(el, to, fmt, ms = 1200) {
 }
 
 /* ---------- state + dials ---------- */
-const state = { fdv: 1e8, pct: 10, results: null, elig: 'all', minXp: 100, topN: 100000, tiers: [{ upTo: 1000, share: 25 }, { upTo: 10000, share: 30 }, { upTo: 100000, share: 30 }, { upTo: Infinity, share: 15 }] };
+const state = { fdv: 1e8, pct: 10, results: null, elig: 'tier', minXp: 100, topN: 100000, tiers: [{ upTo: 1000, share: 25 }, { upTo: 10000, share: 30 }, { upTo: 100000, share: 30 }, { upTo: Infinity, share: 15 }] };
 const range = $('pct');
 function syncChips(id, v) { document.querySelectorAll(`#${id} .chip[data-v]`).forEach((c) => c.classList.toggle('on', +c.dataset.v === v)); }
 function setPct(v, from) {
@@ -175,7 +175,7 @@ $('topN').addEventListener('input', (e) => { state.topN = Math.max(1, +e.target.
   box.addEventListener('input', (e) => { const i = +e.target.dataset.i, k = e.target.dataset.k; if (k) { state.tiers[i][k] = +e.target.value || 0; updateEligNotes(); render(false); } });
 })();
 
-setElig('all');
+setElig('tier');
 
 /* ---------- valuation ---------- */
 function calc() {
@@ -293,24 +293,114 @@ $('dlCard').addEventListener('click', async () => { const b = await toBlob(await
 $('copyCard').addEventListener('click', async () => { const b = $('copyCard'); try { const cv = await drawCard(); await navigator.clipboard.write([new ClipboardItem({ 'image/png': await toBlob(cv) })]); b.textContent = 'Copied!'; } catch { b.textContent = 'Copy not supported'; } setTimeout(() => (b.textContent = 'Copy image'), 1800); });
 $('shareX').addEventListener('click', () => { const c = calc(); const text = `I'm a ${c.tier.name} on Jumper — ${fmtInt(c.xp)} XP${c.best ? `, rank #${fmtInt(c.best.position)}` : ''}. Worth ~${fmtMoney(c.value)} at ${fmtMoney(state.fdv)} FDV with a ${pctText(state.pct)} airdrop.\n\nWhat tier are you? 👇\n${location.origin}`; open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener'); });
 
-/* ---------- fidget spinner ---------- */
+/* ---------- fidget spinner: physics + 3D grab + synthesized sound ---------- */
 (function spinner() {
-  const el = $('spinner'); if (!el) return;
-  let ang = 0, vel = 0, dragging = false, lastA = 0, lastT = 0, spins = 0, acc = 0;
-  const center = () => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
-  const angleOf = (e) => { const c = center(); return Math.atan2(e.clientY - c.y, e.clientX - c.x) * 180 / Math.PI; };
-  el.addEventListener('pointerdown', (e) => { dragging = true; el.setPointerCapture(e.pointerId); el.classList.add('grabbing'); lastA = angleOf(e); lastT = performance.now(); vel = 0; });
-  el.addEventListener('pointermove', (e) => { if (!dragging) return; const a = angleOf(e), t = performance.now(); let d = a - lastA; if (d > 180) d -= 360; if (d < -180) d += 360; ang += d; vel = d / Math.max(1, t - lastT) * 16; lastA = a; lastT = t; });
-  const up = () => { if (!dragging) return; dragging = false; el.classList.remove('grabbing'); if (Math.abs(vel) < 2) vel = (vel < 0 ? -1 : 1) * 14; if (navigator.vibrate && Math.abs(vel) > 8) navigator.vibrate(12); };
-  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
-  el.addEventListener('click', (e) => e.preventDefault());
-  el.addEventListener('dragstart', (e) => e.preventDefault());
-  (function tick() {
-    if (!dragging) { ang += vel; vel *= .99; if (Math.abs(vel) < .05) vel = 0; }
-    acc += Math.abs(dragging ? ang - (tick.prev ?? ang) : vel); tick.prev = ang; if (acc >= 360) { spins += Math.floor(acc / 360); acc %= 360; $('spinCount').textContent = spins; }
+  const el = $('spinner'), box = $('logo3d'), ring = $('spinRing'); if (!el) return;
+  const cntEl = $('spinCount'), rpmEl = $('spinRpm'), keEl = $('keBar'), sndBtn = $('sndBtn'), sndTxt = $('sndTxt');
+  // --- state (angles in deg, ω in deg/s)
+  let ang = 0, w = 0, dragging = false, lastA = 0, lastT = 0, samples = [], spins = 0, acc = 0, tickAcc = 0, prevT = performance.now();
+  let grabX = 0, grabY = 0; // -1..1 relative grab point for the 3D tilt
+  const VISC = 0.22, BEAR = 28, MAX = 4300; // viscous drag /s, bearing drag deg/s², max ω
+  const center = () => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 }; };
+  const angleOf = (e, c) => Math.atan2(e.clientY - c.y, e.clientX - c.x) * 180 / Math.PI;
+
+  // --- sound (Web Audio, synthesized; nothing to download)
+  const S = { on: false, ctx: null, whir: null, whirGain: null, whirFilter: null, master: null };
+  try { S.on = localStorage.getItem('jxp_snd') === '1'; } catch {}
+  function ensureAudio() {
+    if (S.ctx) { if (S.ctx.state === 'suspended') S.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; const ctx = S.ctx = new AC();
+    S.master = ctx.createGain(); S.master.gain.value = 0; S.master.connect(ctx.destination);
+    // looping pink-ish noise → bandpass → gain = bearing whir
+    const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0); let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < len; i++) { const wn = Math.random() * 2 - 1; b0 = .997 * b0 + .029 * wn; b1 = .985 * b1 + .032 * wn; b2 = .95 * b2 + .048 * wn; d[i] = (b0 + b1 + b2 + wn * .05) * .6; }
+    S.whir = ctx.createBufferSource(); S.whir.buffer = buf; S.whir.loop = true;
+    S.whirFilter = ctx.createBiquadFilter(); S.whirFilter.type = 'bandpass'; S.whirFilter.Q.value = 1.2; S.whirFilter.frequency.value = 300;
+    S.whirGain = ctx.createGain(); S.whirGain.gain.value = 0;
+    S.whir.connect(S.whirFilter); S.whirFilter.connect(S.whirGain); S.whirGain.connect(S.master); S.whir.start();
+    // unlock on iOS
+    const o = ctx.createOscillator(), g = ctx.createGain(); g.gain.value = 0; o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + .01);
+  }
+  function setSound(on) {
+    S.on = on; sndBtn.setAttribute('aria-pressed', on); sndTxt.textContent = on ? 'Sound on' : 'Sound off';
+    try { localStorage.setItem('jxp_snd', on ? '1' : '0'); } catch {}
+    if (on) { ensureAudio(); if (S.master) S.master.gain.setTargetAtTime(.9, S.ctx.currentTime, .05); }
+    else if (S.master) S.master.gain.setTargetAtTime(0, S.ctx.currentTime, .05);
+  }
+  sndBtn.addEventListener('click', () => setSound(!S.on));
+  sndBtn.setAttribute('aria-pressed', S.on); sndTxt.textContent = S.on ? 'Sound on' : 'Sound off';
+  const now = () => S.ctx.currentTime;
+  function click(vol, pitch = 1) { // ratchet tick: tiny filtered noise burst + short sine ping
+    if (!S.on || !S.ctx) return; const ctx = S.ctx, t = now();
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(1800 * pitch, t); o.frequency.exponentialRampToValueAtTime(600 * pitch, t + .03);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * .35, t + .002); g.gain.exponentialRampToValueAtTime(.0001, t + .045);
+    o.connect(g); g.connect(S.master); o.start(t); o.stop(t + .05);
+    const n = ctx.createBufferSource(); n.buffer = S.whir.buffer; const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2500; const ng = ctx.createGain();
+    ng.gain.setValueAtTime(vol * .5, t); ng.gain.exponentialRampToValueAtTime(.0001, t + .02); n.connect(f); f.connect(ng); ng.connect(S.master); n.start(t, Math.random()); n.stop(t + .03);
+  }
+  function whoosh(strength) { // flick: filtered noise with a sweep
+    if (!S.on || !S.ctx) return; const ctx = S.ctx, t = now(), n = ctx.createBufferSource(); n.buffer = S.whir.buffer; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = .8;
+    f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(2200 + 2000 * strength, t + .12); f.frequency.exponentialRampToValueAtTime(500, t + .5);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.5 * strength, t + .06); g.gain.exponentialRampToValueAtTime(.0001, t + .55);
+    n.connect(f); f.connect(g); g.connect(S.master); n.start(t, Math.random()); n.stop(t + .6);
+  }
+  function thud() { // grab: low soft knock
+    if (!S.on || !S.ctx) return; const ctx = S.ctx, t = now(), o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(60, t + .12);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.35, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + .16); o.connect(g); g.connect(S.master); o.start(t); o.stop(t + .18);
+  }
+
+  // --- input
+  box.addEventListener('pointerdown', (e) => {
+    dragging = true; box.setPointerCapture(e.pointerId); el.classList.add('grabbing'); box.classList.add('grab');
+    const c = center(); lastA = angleOf(e, c); lastT = performance.now(); samples = []; grabX = (e.clientX - c.x) / c.r; grabY = (e.clientY - c.y) / c.r;
+    if (S.on) { ensureAudio(); thud(); } if (navigator.vibrate) navigator.vibrate(8);
+  });
+  box.addEventListener('pointermove', (e) => {
+    if (!dragging) return; const c = center(), a = angleOf(e, c), t = performance.now(); let d = a - lastA; if (d > 180) d -= 360; if (d < -180) d += 360;
+    ang += d; samples.push({ d, t }); while (samples.length && t - samples[0].t > 90) samples.shift(); lastA = a; lastT = t;
+    grabX = (e.clientX - c.x) / c.r; grabY = (e.clientY - c.y) / c.r;
+    // while held, ω follows the finger (for sound + ring), estimated over the last ~90ms
+    const sum = samples.reduce((s, x) => s + x.d, 0), span = Math.max(16, t - samples[0].t); w = sum / span * 1000;
+  });
+  const release = (e) => {
+    if (!dragging) return; dragging = false; el.classList.remove('grabbing'); box.classList.remove('grab');
+    const t = performance.now(); const recent = samples.filter((x) => t - x.t <= 90); const sum = recent.reduce((s, x) => s + x.d, 0);
+    const span = recent.length ? Math.max(16, t - recent[0].t) : 16; let v = sum / span * 1000; // deg/s
+    if (t - lastT > 120) v = 0; // held still → no flick
+    if (Math.abs(v) < 60 && recent.length < 2) v = (v < 0 || (e && e.clientX < center().x) ? -1 : 1) * 420; // a tap gives a nudge
+    w = Math.max(-MAX, Math.min(MAX, v)); const strength = Math.min(1, Math.abs(w) / 2500);
+    whoosh(strength); if (navigator.vibrate && strength > .25) navigator.vibrate(Math.round(10 + 25 * strength));
+    grabX = grabY = 0;
+  };
+  box.addEventListener('pointerup', release); box.addEventListener('pointercancel', release);
+  box.addEventListener('click', (e) => e.preventDefault()); box.addEventListener('dragstart', (e) => e.preventDefault());
+
+  // --- loop
+  (function tick(t) {
+    const dt = Math.min(.05, (t - prevT) / 1000); prevT = t;
+    if (!dragging && w !== 0) {
+      const sign = Math.sign(w); const mag = Math.abs(w);
+      let next = mag - (VISC * mag + BEAR) * dt; if (next < 0) next = 0; w = sign * next; ang += w * dt;
+      // low-speed wobble: a real spinner rocks slightly before it stops
+    }
+    const speed = Math.abs(w), rpm = speed / 6, e = Math.min(1, (speed / MAX) ** 2);
+    // counters
+    const dAng = dragging ? (samples.length ? samples[samples.length - 1].d : 0) : w * dt; acc += Math.abs(dAng); tickAcc += Math.abs(dAng);
+    if (acc >= 360) { spins += Math.floor(acc / 360); acc %= 360; cntEl.textContent = spins; if (navigator.vibrate && speed > 400) navigator.vibrate(4); }
+    // ratchet ticks: one per 45°, louder + higher with speed; at very high speed they merge into a buzz
+    const tickStep = speed > 2600 ? 90 : 45; if (tickAcc >= tickStep) { tickAcc %= tickStep; if (speed > 30) click(Math.min(1, .15 + speed / 1500), .8 + Math.min(1.2, speed / 2000)); }
+    // whir follows speed
+    if (S.ctx && S.whirGain) { const tt = S.ctx.currentTime; S.whirGain.gain.setTargetAtTime(Math.min(.55, speed / 2200), tt, .04); S.whirFilter.frequency.setTargetAtTime(220 + speed * .55, tt, .05); }
+    // HUD
+    rpmEl.textContent = Math.round(rpm); keEl.style.width = (Math.min(1, speed / MAX) * 100) + '%';
+    // visuals: spin angle on the img (parallax loop composes it), ring + 3D press on the wrapper
     el.dataset.spin = ang.toFixed(2);
+    ring.style.transform = `rotate(${ang}deg)`; ring.style.opacity = Math.min(.9, speed / 1200);
+    el.style.filter = speed > 900 ? `blur(${Math.min(1.6, (speed - 900) / 1800)}px) saturate(${1 + e * .4})` : '';
+    el.style.boxShadow = dragging ? `0 ${34 + 10 * grabY}px 70px rgba(0,0,0,.65), 0 0 ${90 + 60 * e}px rgba(225,95,245,${.25 + .3 * e})` : `0 ${40 + 30 * e}px ${110 + 40 * e}px rgba(0,0,0,.55), 0 0 ${110 + 80 * e}px rgba(225,95,245,${.16 + .3 * e})`;
+    box.style.transform = dragging ? `translateZ(24px) scale(1.04) rotateX(${-grabY * 14}deg) rotateY(${grabX * 14}deg)` : `translateZ(0) rotateX(${(Math.sin(ang * Math.PI / 180) * 2.2 * (1 - e)).toFixed(2)}deg) rotateY(${(Math.cos(ang * Math.PI / 180) * 2.2 * (1 - e)).toFixed(2)}deg)`;
     requestAnimationFrame(tick);
-  })();
+  })(prevT);
 })();
 
 })();
