@@ -18,7 +18,10 @@ Or from a terminal: `npx vercel` in this folder and follow the prompts.
 | `index.html` | Layout + styles (desktop and mobile views) |
 | `app.js` | Calculator, 3D card, share card, physics chevrons, Bridge Dash game |
 | `api/xp.js` | Proxies `api.jumper.xyz/v1/leaderboard/{address}` (that API has no CORS headers) |
-| `logo.jpg` | Logo, used for favicon + share card |
+| `logo.jpg` | Logo image (favicon, nav, hero, share card) |
+| `logo-mark.svg` | Exact vector trace of the logo mark, used inside tier emblems (paths embedded in `tiers.js`) |
+| `tiers.js` | The 10 rank tiers + emblem generator |
+| `pranjal.jpg` | Footer avatar |
 | `scripts/estimate-total.mjs` | Recomputes the total-XP snapshot |
 
 ## Updating the total-XP snapshot
