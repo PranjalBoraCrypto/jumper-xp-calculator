@@ -18,6 +18,8 @@ const $ = (id) => document.getElementById(id);
 const desktop = () => matchMedia('(min-width: 921px) and (pointer: fine)').matches;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+const track = (name, params) => { try { window.gtag && window.gtag('event', name, params || {}); } catch {} };
+
 /* ---------- formatting ---------- */
 const fmtInt = (n) => Math.round(n).toLocaleString('en-US');
 const trim = (s) => s.replace(/\.?0+$/, '');
@@ -113,7 +115,7 @@ $('heroGo').addEventListener('click', (e) => { e.preventDefault(); const panel =
 document.querySelector('.nav .cta').addEventListener('click', (e) => { e.preventDefault(); document.querySelector('.input-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); setTimeout(() => addrEvm.focus({ preventScroll: true }), 500); });
 function notice(id, msg) { const el = $(id); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
 const maskAddr = (a) => (a.startsWith('0x') ? '0x' : '') + '••••••••••••';
-$('maskBtn').addEventListener('click', () => { state.mask = !state.mask; $('maskBtn').setAttribute('aria-pressed', state.mask); $('maskTxt').textContent = state.mask ? 'Show addresses' : 'Hide addresses'; render(false); });
+$('maskBtn').addEventListener('click', () => { track('mask_toggle'); state.mask = !state.mask; $('maskBtn').setAttribute('aria-pressed', state.mask); $('maskTxt').textContent = state.mask ? 'Show addresses' : 'Hide addresses'; render(false); });
 
 async function lookup(demo) {
   const f = fieldState(), addrs = parseAddrs(); notice('err', ''); notice('warn', '');
@@ -138,6 +140,7 @@ async function lookup(demo) {
     await new Promise((r) => setTimeout(r, Math.max(0, 1500 - (performance.now() - t0))));
     await finishLoader();
     state.results = results; lastXp = -1; render(true);
+    track(demo ? 'lookup_demo' : 'lookup', { wallets: results.length, chains: results.map((r) => r.chain).join('+'), tier: calc().tier.name });
     const card = $('result'); card.classList.remove('reveal'); void card.offsetWidth; card.classList.add('reveal'); card.addEventListener('animationend', function h(ev) { if (ev.animationName === 'flipIn') { card.classList.remove('reveal'); card.removeEventListener('animationend', h); } });
   } catch (e) { stopLoader(); const msg = e.message === 'Failed to fetch' ? 'Could not reach the API. Deploy on Vercel so /api/xp exists.' : e.message; notice('err', msg); if (!state.results) { $('resultEmpty').style.display = 'grid'; $('resultEmpty').querySelector('.big').textContent = 'Lookup failed'; $('resultEmpty').querySelector('div').lastChild.textContent = msg; } if (!desktop()) $('err').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   finally { go.disabled = false; $('goTxt').textContent = 'Check my XP'; }
@@ -166,7 +169,7 @@ function eligSummary() {
 function setElig(m) {
   state.elig = m; document.querySelectorAll('#eligSeg button').forEach((b) => b.classList.toggle('on', b.dataset.m === m));
   ['all', 'min', 'top', 'tier', 'level'].forEach((k) => ($('elig-' + k).hidden = k !== m));
-  $('eligLabel').textContent = ELIG_NAMES[m]; updateEligNotes(); render(false);
+  $('eligLabel').textContent = ELIG_NAMES[m]; updateEligNotes(); render(false); track('eligibility_mode', { mode: m });
 }
 function updateEligNotes() {
   $('nAll').textContent = fmtBig(SNAPSHOT.wallets);
@@ -349,9 +352,9 @@ async function drawCard() {
   return cv;
 }
 const toBlob = (cv) => new Promise((r) => cv.toBlob(r, 'image/png'));
-$('dlCard').addEventListener('click', async () => { const b = await toBlob(await drawCard()); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'jumper-xp-card.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
-$('copyCard').addEventListener('click', async () => { const b = $('copyCard'); try { const cv = await drawCard(); await navigator.clipboard.write([new ClipboardItem({ 'image/png': await toBlob(cv) })]); b.textContent = 'Copied!'; } catch { b.textContent = 'Copy not supported'; } setTimeout(() => (b.textContent = 'Copy image'), 1800); });
-$('shareX').addEventListener('click', () => { const c = calc(); const text = `I'm a ${c.tier.name} on Jumper — ${fmtInt(c.xp)} XP${c.best ? `, rank #${fmtInt(c.best.position)}` : ''}. Worth ~${fmtMoney(c.value)} at ${fmtMoney(state.fdv)} FDV with a ${pctText(state.pct)} airdrop.\n\nWhat tier are you? 👇\n${location.origin}`; open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener'); });
+$('dlCard').addEventListener('click', async () => { track('share_download'); const b = await toBlob(await drawCard()); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'jumper-xp-card.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+$('copyCard').addEventListener('click', async () => { track('share_copy'); const b = $('copyCard'); try { const cv = await drawCard(); await navigator.clipboard.write([new ClipboardItem({ 'image/png': await toBlob(cv) })]); b.textContent = 'Copied!'; } catch { b.textContent = 'Copy not supported'; } setTimeout(() => (b.textContent = 'Copy image'), 1800); });
+$('shareX').addEventListener('click', () => { track('share_x'); const c = calc(); const text = `I'm a ${c.tier.name} on Jumper — ${fmtInt(c.xp)} XP${c.best ? `, rank #${fmtInt(c.best.position)}` : ''}. Worth ~${fmtMoney(c.value)} at ${fmtMoney(state.fdv)} FDV with a ${pctText(state.pct)} airdrop.\n\nWhat tier are you? 👇\n${location.origin}`; open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener'); });
 
 /* ---------- fidget spinner: physics + 3D grab + synthesized sound ---------- */
 (function spinner() {
@@ -429,7 +432,7 @@ $('shareX').addEventListener('click', () => { const c = calc(); const text = `I'
     if (t - lastT > 120) v = 0; // held still → no flick
     if (Math.abs(v) < 60 && recent.length < 2) v = (v < 0 || (e && e.clientX < center().x) ? -1 : 1) * 420; // a tap gives a nudge
     w = Math.max(-MAX, Math.min(MAX, v)); const strength = Math.min(1, Math.abs(w) / 2500);
-    whoosh(strength); if (navigator.vibrate && strength > .25) navigator.vibrate(Math.round(10 + 25 * strength));
+    whoosh(strength); if (strength > .3) track('spinner_flick', { rpm: Math.round(Math.abs(w) / 6) }); if (navigator.vibrate && strength > .25) navigator.vibrate(Math.round(10 + 25 * strength));
     grabX = grabY = 0;
   };
   box.addEventListener('pointerup', release); box.addEventListener('pointercancel', release);
