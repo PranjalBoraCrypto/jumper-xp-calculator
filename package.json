@@ -1,0 +1,11 @@
+{
+  "name": "jumper-xp-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Unofficial Jumper XP calculator — see your XP, rank and what-if value at any FDV.",
+  "scripts": {
+    "dev": "vercel dev",
+    "estimate-total": "node scripts/estimate-total.mjs"
+  }
+}
