@@ -314,6 +314,20 @@ footer .gl{height:1px; background:linear-gradient(90deg,transparent,rgba(225,95,
 .live i{width:8px;height:8px;border-radius:50%;background:#34d399; animation:pulse 2.2s infinite}
 .foot-word{position:absolute; left:50%; bottom:-.18em; transform:translateX(-50%); font-family:var(--display); font-weight:800; font-size:clamp(110px,19vw,300px); letter-spacing:-.06em; color:transparent; -webkit-text-stroke:1px rgba(196,169,245,.12); white-space:nowrap; pointer-events:none; user-select:none; will-change:transform}
 
+/* ===== mobile live bar ===== */
+.livebar{display:none}
+@media (max-width:920px){
+  .livebar{position:fixed; left:12px; right:12px; bottom:max(12px, env(safe-area-inset-bottom)); z-index:40; display:flex; align-items:center; gap:12px; padding:10px 12px 10px 10px; border-radius:18px; border:1px solid rgba(225,95,245,.4); background:rgba(18,10,36,.9); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); box-shadow:0 16px 50px rgba(0,0,0,.5), 0 0 40px rgba(225,95,245,.18); color:var(--ink); text-align:left; cursor:pointer; transform:translateY(120%); opacity:0; transition:transform .45s var(--ease), opacity .35s; pointer-events:none}
+  .livebar.on{transform:none; opacity:1; pointer-events:auto}
+  body.has-bar footer .foot{padding-bottom:150px}
+  .lb-em{width:40px; height:40px; flex:0 0 auto} .lb-em svg{width:100%; height:100%; display:block}
+  .lb-txt{display:flex; flex-direction:column; min-width:0; flex:1}
+  .lb-k{font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .lb-v{font-family:var(--display); font-weight:800; font-size:22px; letter-spacing:-.03em; line-height:1.1; background:linear-gradient(92deg,#fff,var(--pink2)); -webkit-background-clip:text; background-clip:text; color:transparent; transition:transform .2s}
+  .lb-v.bump{transform:scale(1.06)}
+  .lb-cta{font-size:12px; font-weight:700; color:#fff; padding:9px 12px; border-radius:12px; background:linear-gradient(135deg,#7c3aed,#e15ff5); white-space:nowrap}
+}
+
 /* ===== reveal ===== */
 .rv{opacity:0; transform:translateY(34px); transition:opacity 1s var(--ease), transform 1s var(--ease)}
 .rv.in{opacity:1; transform:none}
@@ -553,6 +567,11 @@ footer .gl{height:1px; background:linear-gradient(90deg,transparent,rgba(225,95,
   </div>
 </footer>
 
+<button class="livebar" id="livebar" type="button" aria-label="Jump to your card">
+  <span class="lb-em" id="lbEmblem"></span>
+  <span class="lb-txt"><span class="lb-k" id="lbTier">Apex · Level 28</span><span class="lb-v" id="lbVal">$0</span></span>
+  <span class="lb-cta">View card ↑</span>
+</button>
 <canvas id="shareCanvas" width="1200" height="630" style="display:none"></canvas>
 <script src="/tiers.js" defer></script>
 <script src="/app.js" defer></script>

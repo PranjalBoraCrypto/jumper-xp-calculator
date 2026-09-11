@@ -232,7 +232,20 @@ function render(animate) {
   $('resRank').textContent = c.best ? (multi ? 'best rank #' : 'rank #') + fmtInt(c.best.position) : c.xp ? 'unranked' : 'no XP on this wallet';
   const showA = (r) => (state.mask ? maskAddr(r.address) : short(r.address));
   $('walletTable').innerHTML = '<table><tr><th>Wallet</th><th>Chain</th><th style="text-align:right">Rank</th><th style="text-align:right">XP</th></tr>' + state.results.map((r) => `<tr><td>${showA(r)}</td><td class="d">${r.chain === 'solana' ? 'Solana' : 'EVM'}</td><td class="r d">${r.position ? '#' + fmtInt(r.position) : r.error ? 'error' : '—'}</td><td class="r">${fmtInt(r.points || 0)}</td></tr>`).join('') + '</table>';
+  updateLivebar(c);
   document.querySelectorAll('#ladder .rung').forEach((el) => { const me = +el.dataset.id === t.id; el.classList.toggle('me', me); if (me) { el.style.setProperty('--tc2', t.c2); el.style.setProperty('--tglow', t.glow); } });
+}
+/* ---------- mobile live bar: shows the live value while the card is off-screen ---------- */
+const livebar = $('livebar'); let cardVisible = true, lbTier = 0;
+new IntersectionObserver((es) => { cardVisible = es[0].isIntersecting; syncLivebar(); }, { threshold: .15 }).observe($('result'));
+function syncLivebar() { const on = !!state.results && !cardVisible && !desktop(); livebar.classList.toggle('on', on); document.body.classList.toggle('has-bar', on); }
+livebar.addEventListener('click', () => { $('result').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+function updateLivebar(c) {
+  if (lbTier !== c.tier.id) { $('lbEmblem').innerHTML = JXP.emblemSVG(c.tier, 40); lbTier = c.tier.id; }
+  const lv = JXP.levelFor(Math.max(...state.results.map((r) => r.points || 0)));
+  $('lbTier').textContent = `${c.tier.name} · Level ${lv.level} · ${eligSummary()}`;
+  const v = $('lbVal'), txt = c.eligible ? fmtMoney(c.value) : 'Not eligible'; if (v.textContent !== txt) { v.textContent = txt; v.classList.remove('bump'); void v.offsetWidth; v.classList.add('bump'); }
+  syncLivebar();
 }
 const fmtTop = (p) => (p < .01 ? '0.01' : p < 1 ? p.toFixed(2) : p.toFixed(1)) + '%';
 
