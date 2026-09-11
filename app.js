@@ -237,7 +237,7 @@ function render(animate) {
 }
 /* ---------- mobile live bar: shows the live value while the card is off-screen ---------- */
 const livebar = $('livebar'); let cardVisible = true, lbTier = 0;
-new IntersectionObserver((es) => { cardVisible = es[0].isIntersecting; syncLivebar(); }, { threshold: .15 }).observe($('result'));
+new IntersectionObserver((es) => { cardVisible = es[0].intersectionRatio >= .12; syncLivebar(); }, { threshold: [0, .12, .5, 1] }).observe($('result'));
 function syncLivebar() { const on = !!state.results && !cardVisible && !desktop(); livebar.classList.toggle('on', on); document.body.classList.toggle('has-bar', on); }
 livebar.addEventListener('click', () => { $('result').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 function updateLivebar(c) {
