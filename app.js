@@ -73,7 +73,7 @@ function countUp(el, to, fmt, ms = 1200) {
 }
 
 /* ---------- state + dials ---------- */
-const state = { fdv: 1e8, pct: 10, results: null, elig: 'tier', minXp: 100, topN: 100000, tiers: [{ upTo: 1000, share: 25 }, { upTo: 10000, share: 30 }, { upTo: 100000, share: 30 }, { upTo: Infinity, share: 15 }] };
+const state = { fdv: 1e8, pct: 10, results: null, mask: false, elig: 'tier', minXp: 100, topN: 100000, minLevel: 10, tiers: [{ upTo: 1000, share: 25 }, { upTo: 10000, share: 30 }, { upTo: 100000, share: 30 }, { upTo: Infinity, share: 15 }] };
 const range = $('pct');
 function syncChips(id, v) { document.querySelectorAll(`#${id} .chip[data-v]`).forEach((c) => c.classList.toggle('on', +c.dataset.v === v)); }
 function setPct(v, from) {
@@ -96,20 +96,27 @@ document.querySelectorAll('#fdvChips .chip[data-v]').forEach((c) => c.addEventLi
 setPct(10); setFdv(1e8);
 
 /* ---------- lookup ---------- */
-const addr = $('addr');
-const parseAddrs = () => [...new Set(addr.value.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean))];
-addr.addEventListener('input', () => { const n = parseAddrs().length; $('addrCount').textContent = n + (n === 1 ? ' wallet' : ' wallets'); });
-addr.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') lookup(false); });
-$('demo').addEventListener('click', () => { addr.value = '0x1234567890abcdef1234567890abcdef12345678'; addr.dispatchEvent(new Event('input')); lookup(true); });
+const addrEvm = $('addrEvm'), addrSol = $('addrSol');
+function fieldState() {
+  const e = addrEvm.value.trim(), so = addrSol.value.trim();
+  const eOk = !e || EVM_RE.test(e), sOk = !so || SOL_RE.test(so);
+  $('wfEvm').className = 'wfield' + (e ? (eOk ? ' ok' : ' bad') : ''); $('stEvm').textContent = e ? (eOk ? '✓' : '!') : '';
+  $('wfSol').className = 'wfield' + (so ? (sOk ? ' ok' : ' bad') : ''); $('stSol').textContent = so ? (sOk ? '✓' : '!') : '';
+  return { e, so, eOk, sOk };
+}
+const parseAddrs = () => { const f = fieldState(); const out = []; if (f.e) out.push(f.e); if (f.so) out.push(f.so); return out; };
+[addrEvm, addrSol].forEach((el) => { el.addEventListener('input', fieldState); el.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(false); }); });
+$('demo').addEventListener('click', () => { addrEvm.value = '0x1234567890abcdef1234567890abcdef12345678'; addrSol.value = ''; fieldState(); lookup(true); });
 $('go').addEventListener('click', () => lookup(false));
 function notice(id, msg) { const el = $(id); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+const maskAddr = (a) => (a.startsWith('0x') ? '0x' : '') + '••••••••••••';
+$('maskBtn').addEventListener('click', () => { state.mask = !state.mask; $('maskBtn').setAttribute('aria-pressed', state.mask); $('maskTxt').textContent = state.mask ? 'Show addresses' : 'Hide addresses'; render(false); });
 
 async function lookup(demo) {
-  const addrs = parseAddrs(); notice('err', ''); notice('warn', '');
-  if (!addrs.length) return notice('err', 'Paste at least one wallet address.');
-  if (addrs.length > 10) return notice('err', 'Up to 10 wallets at a time.');
-  const bad = addrs.filter((a) => !(EVM_RE.test(a) || SOL_RE.test(a)));
-  if (bad.length) return notice('err', 'That doesn’t look like an EVM or Solana address: ' + short(bad[0]));
+  const f = fieldState(), addrs = parseAddrs(); notice('err', ''); notice('warn', '');
+  if (!addrs.length) return notice('err', 'Enter an EVM or a Solana wallet address (or both).');
+  if (!f.eOk) return notice('err', 'That EVM address should be 0x followed by 40 hex characters.');
+  if (!f.sOk) return notice('err', 'That doesn’t look like a Solana address (32–44 base58 characters).');
   const go = $('go'); go.disabled = true; $('goTxt').innerHTML = '<span class="spinner"></span> Asking Jumper';
   const t0 = performance.now(); startLoader();
   $('result').scrollIntoView({ behavior: 'smooth', block: desktop() ? 'center' : 'start' });
@@ -128,7 +135,7 @@ async function lookup(demo) {
     await new Promise((r) => setTimeout(r, Math.max(0, 1500 - (performance.now() - t0))));
     await finishLoader();
     state.results = results; lastXp = -1; render(true);
-    const card = $('result'); card.classList.remove('reveal'); void card.offsetWidth; card.classList.add('reveal');
+    const card = $('result'); card.classList.remove('reveal'); void card.offsetWidth; card.classList.add('reveal'); card.addEventListener('animationend', function h(ev) { if (ev.animationName === 'flipIn') { card.classList.remove('reveal'); card.removeEventListener('animationend', h); } });
   } catch (e) { stopLoader(); notice('err', e.message === 'Failed to fetch' ? 'Could not reach the API. Deploy on Vercel so /api/xp exists.' : e.message); if (!state.results) $('resultEmpty').style.display = 'grid'; }
   finally { go.disabled = false; $('goTxt').textContent = 'Check my XP'; }
 }
@@ -137,40 +144,43 @@ async function lookup(demo) {
 const LOAD_MSGS = ['Pinging Jumper…', 'Counting your hops…', 'Finding your rank…', 'Pricing your slice…'];
 let loadTimer = null;
 function startLoader() {
-  const L = $('loader'), bar = $('loadBar'), msg = $('loadMsg'); $('resultEmpty').style.display = 'none'; L.classList.add('on'); bar.style.width = '8%';
+  const L = $('loader'), bar = $('loadBar'), msg = $('loadMsg'); $('resultEmpty').style.display = 'none'; L.classList.add('on'); $('result').classList.add('loading'); bar.style.width = '8%';
   let i = 0; const step = () => { msg.innerHTML = `<span>${LOAD_MSGS[i % LOAD_MSGS.length]}</span>`; bar.style.width = Math.min(88, 8 + (i + 1) * 24) + '%'; i++; }; step(); loadTimer = setInterval(step, 420);
 }
-async function finishLoader() { clearInterval(loadTimer); $('loadBar').style.width = '100%'; $('loadMsg').innerHTML = '<span>Done.</span>'; await new Promise((r) => setTimeout(r, 260)); $('loader').classList.remove('on'); }
-function stopLoader() { clearInterval(loadTimer); $('loader').classList.remove('on'); }
+async function finishLoader() { clearInterval(loadTimer); $('loadBar').style.width = '100%'; $('loadMsg').innerHTML = '<span>Done.</span>'; await new Promise((r) => setTimeout(r, 260)); $('loader').classList.remove('on'); $('result').classList.remove('loading'); }
+function stopLoader() { clearInterval(loadTimer); $('loader').classList.remove('on'); $('result').classList.remove('loading'); }
 
 /* ---------- render ---------- */
 /* ---------- eligibility ---------- */
-const ELIG_NAMES = { all: 'Everyone', min: 'Min XP', top: 'Top N', tier: 'Tiered' };
+const ELIG_NAMES = { all: 'Everyone', min: 'Min XP', top: 'Top N', tier: 'Tiered', level: 'Pass Level' };
 function eligSummary() {
   if (state.elig === 'min') return `≥ ${fmtInt(state.minXp)} XP`;
   if (state.elig === 'top') return `top ${fmtBig(state.topN)}`;
   if (state.elig === 'tier') return 'tiered';
+  if (state.elig === 'level') return `Level ${state.minLevel}+`;
   return 'everyone';
 }
 function setElig(m) {
   state.elig = m; document.querySelectorAll('#eligSeg button').forEach((b) => b.classList.toggle('on', b.dataset.m === m));
-  ['all', 'min', 'top', 'tier'].forEach((k) => ($('elig-' + k).hidden = k !== m));
+  ['all', 'min', 'top', 'tier', 'level'].forEach((k) => ($('elig-' + k).hidden = k !== m));
   $('eligLabel').textContent = ELIG_NAMES[m]; updateEligNotes(); render(false);
 }
 function updateEligNotes() {
   $('nAll').textContent = fmtBig(SNAPSHOT.wallets);
   const rMin = rankAtXp(state.minXp); $('nMin').textContent = fmtInt(rMin); $('xMin').textContent = (cumXp(rMin) / SNAPSHOT.totalXp * 100).toFixed(1) + '%';
   const n = Math.min(state.topN, SNAPSHOT.wallets); $('nTop').textContent = fmtInt(n); $('xTop').textContent = fmtInt(xpAtRank(n)); $('sTop').textContent = (cumXp(n) / SNAPSHOT.totalXp * 100).toFixed(1) + '%';
+  const lvMin = JXP.LEVELS[Math.min(100, Math.max(1, state.minLevel)) - 1][1], rL = rankAtXp(lvMin); $('lvlN').textContent = state.minLevel; $('lvlXp').textContent = fmtInt(lvMin); $('nLvl').textContent = fmtInt(rL); $('xLvl').textContent = (cumXp(rL) / SNAPSHOT.totalXp * 100).toFixed(1) + '%';
   const sum = state.tiers.reduce((a, t) => a + (+t.share || 0), 0); const el = $('tiersSum'); el.textContent = `Shares add up to ${sum}%` + (sum === 100 ? '' : ' — should be 100%'); el.classList.toggle('bad', sum !== 100);
 }
 document.querySelectorAll('#eligSeg button').forEach((b) => b.addEventListener('click', () => setElig(b.dataset.m)));
 $('minXp').addEventListener('input', (e) => { state.minXp = Math.max(1, +e.target.value || 1); updateEligNotes(); render(false); });
+$('minLevel').addEventListener('input', (e) => { state.minLevel = Math.min(100, Math.max(1, +e.target.value || 1)); updateEligNotes(); render(false); });
 $('topN').addEventListener('input', (e) => { state.topN = Math.max(1, +e.target.value || 1); updateEligNotes(); render(false); });
 (function buildTiers() {
   const box = $('tiersEdit');
   state.tiers.forEach((t, i) => {
     const last = i === state.tiers.length - 1;
-    box.insertAdjacentHTML('beforeend', `<div class="n">T${i + 1}</div><div>${last ? '<input value="everyone else" disabled>' : `<input type="number" min="1" data-i="${i}" data-k="upTo" value="${t.upTo}" inputmode="numeric">`}</div><div><input type="number" min="0" max="100" data-i="${i}" data-k="share" value="${t.share}" inputmode="decimal"></div>`);
+    box.insertAdjacentHTML('beforeend', `<div class="n">T${i + 1}</div><div>${last ? '<input value="the rest" disabled>' : `<input type="number" min="1" data-i="${i}" data-k="upTo" value="${t.upTo}" inputmode="numeric">`}</div><div><input type="number" min="0" max="100" data-i="${i}" data-k="share" value="${t.share}" inputmode="decimal"></div>`);
   });
   box.addEventListener('input', (e) => { const i = +e.target.dataset.i, k = e.target.dataset.k; if (k) { state.tiers[i][k] = +e.target.value || 0; updateEligNotes(); render(false); } });
 })();
@@ -184,6 +194,7 @@ function calc() {
   let value = 0, poolXp = SNAPSHOT.totalXp, eligibleXp = 0, note = '';
   if (state.elig === 'all') { eligibleXp = xp; value = xp / poolXp * F; }
   else if (state.elig === 'min') { poolXp = cumXp(rankAtXp(state.minXp)); for (const r of rs) if ((r.points || 0) >= state.minXp) eligibleXp += r.points; value = eligibleXp / poolXp * F; }
+  else if (state.elig === 'level') { const lvMin = JXP.LEVELS[Math.min(100, Math.max(1, state.minLevel)) - 1][1]; poolXp = cumXp(rankAtXp(lvMin)); for (const r of rs) if ((r.points || 0) >= lvMin) eligibleXp += r.points; value = eligibleXp / poolXp * F; }
   else if (state.elig === 'top') { const n = Math.min(state.topN, SNAPSHOT.wallets); poolXp = cumXp(n); for (const r of rs) if (r.position && r.position <= n) eligibleXp += r.points; value = eligibleXp / poolXp * F; }
   else {
     const cut = state.tiers.map((t) => (isFinite(t.upTo) ? Math.min(t.upTo, SNAPSHOT.wallets) : SNAPSHOT.wallets));
@@ -209,10 +220,15 @@ function render(animate) {
   $('valueBox').classList.toggle('ineligible', !c.eligible);
   $('eqXp').textContent = fmtInt(c.xp); $('eqTotal').textContent = isFinite(c.poolXp) ? fmtBig(c.poolXp) : 'tiered';
   $('valFdv').textContent = fmtMoney(state.fdv); $('valPct').textContent = pctText(state.pct); $('valElig').textContent = eligSummary();
-  $('resShare').textContent = !c.eligible ? (state.elig === 'min' ? `Below the ${fmtInt(state.minXp)} XP cutoff` : state.elig === 'top' ? `Outside the top ${fmtInt(state.topN)}` : 'No ranked XP') : isFinite(c.poolXp) ? (c.eligibleXp / c.poolXp * 100).toFixed(5) + '% of the eligible pool' : 'Tiered split · pro-rata inside your tier';
+  $('resShare').textContent = !c.eligible ? (state.elig === 'min' ? `Below the ${fmtInt(state.minXp)} XP cutoff` : state.elig === 'top' ? `Outside the top ${fmtInt(state.topN)}` : state.elig === 'level' ? `Below Pass Level ${state.minLevel}` : 'No ranked XP') : isFinite(c.poolXp) ? (c.eligibleXp / c.poolXp * 100).toFixed(5) + '% of the eligible pool' : 'Tiered split · pro-rata inside your tier';
   $('resPerPct').textContent = fmtMoney(c.perPct); $('resPerXp').textContent = fmtMoney(c.perXp); $('resWallets').textContent = state.results.length;
+  const lvW = state.results.slice().sort((x, y) => (y.points || 0) - (x.points || 0))[0], lv = JXP.levelFor(lvW ? lvW.points : 0);
+  $('passLevel').textContent = 'Level ' + lv.level + (multi ? ' · ' + (lvW.chain === 'solana' ? 'SOL' : 'EVM') : '');
+  $('passBar').style.width = (lv.progress * 100) + '%';
+  $('passNext').textContent = lv.level >= 100 ? 'Max level reached' : `${fmtInt(lv.next)} XP to Level ${lv.level + 1} · ${fmtInt(lv.min)}–${fmtInt(lv.max)} XP band`;
   $('resRank').textContent = c.best ? (multi ? 'best rank #' : 'rank #') + fmtInt(c.best.position) : c.xp ? 'unranked' : 'no XP on this wallet';
-  $('walletTable').innerHTML = multi ? '<table><tr><th>Wallet</th><th>Chain</th><th style="text-align:right">Rank</th><th style="text-align:right">XP</th></tr>' + state.results.map((r) => `<tr><td>${short(r.address)}</td><td class="d">${r.chain === 'solana' ? 'Solana' : 'EVM'}</td><td class="r d">${r.position ? '#' + fmtInt(r.position) : r.error ? 'error' : '—'}</td><td class="r">${fmtInt(r.points || 0)}</td></tr>`).join('') + '</table>' : '';
+  const showA = (r) => (state.mask ? maskAddr(r.address) : short(r.address));
+  $('walletTable').innerHTML = '<table><tr><th>Wallet</th><th>Chain</th><th style="text-align:right">Rank</th><th style="text-align:right">XP</th></tr>' + state.results.map((r) => `<tr><td>${showA(r)}</td><td class="d">${r.chain === 'solana' ? 'Solana' : 'EVM'}</td><td class="r d">${r.position ? '#' + fmtInt(r.position) : r.error ? 'error' : '—'}</td><td class="r">${fmtInt(r.points || 0)}</td></tr>`).join('') + '</table>';
   document.querySelectorAll('#ladder .rung').forEach((el) => { const me = +el.dataset.id === t.id; el.classList.toggle('me', me); if (me) { el.style.setProperty('--tc2', t.c2); el.style.setProperty('--tglow', t.glow); } });
 }
 const fmtTop = (p) => (p < .01 ? '0.01' : p < 1 ? p.toFixed(2) : p.toFixed(1)) + '%';
@@ -271,8 +287,9 @@ async function drawCard() {
     ctx.fillStyle = '#fff'; ctx.font = `800 118px ${D}`; ctx.fillText(fmtInt(c.xp), 464, 300);
     ctx.fillStyle = '#b6a7d8'; ctx.font = `600 18px ${B}`; ctx.fillText(sub, 470, 355);
     const vg = ctx.createLinearGradient(470, 0, 1000, 0); vg.addColorStop(0, '#fff'); vg.addColorStop(1, t.c2); ctx.fillStyle = c.eligible ? vg : '#ffb3c6'; ctx.font = `800 ${c.eligible ? 84 : 56}px ${D}`; ctx.fillText(valTxt, 464, 445);
-    let x = 470; if (rankTxt) x += pill(x, 490, rankTxt, '#c4a9f5') + 12; pill(x, 490, topTxt, t.c2);
-    foot(575);
+    let x = 470; if (rankTxt) x += pill(x, 490, rankTxt, '#c4a9f5') + 12; x += pill(x, 490, topTxt, t.c2) + 12; pill(x, 490, 'Pass Level ' + JXP.levelFor(Math.max(...state.results.map((r) => r.points || 0))).level, '#fff');
+    ctx.fillStyle = '#7c6aa4'; ctx.font = `500 15px "JetBrains Mono", Menlo, monospace`; ctx.textAlign = 'left'; ctx.fillText(state.results.map((r) => (r.chain === 'solana' ? 'SOL ' : 'EVM ') + (state.mask ? maskAddr(r.address) : short(r.address))).join('   ·   '), 472, 552);
+    foot(585);
   } else {
     header(70, 64);
     ctx.drawImage(em, W / 2 - 200, 170, 400, 400);
@@ -283,8 +300,9 @@ async function drawCard() {
     ctx.fillStyle = '#fff'; ctx.font = `800 150px ${D}`; ctx.fillText(fmtInt(c.xp), W / 2, 930);
     ctx.fillStyle = '#b6a7d8'; ctx.font = `600 18px ${B}`; ctx.fillText(sub, W / 2, 990);
     const vg = ctx.createLinearGradient(W / 2 - 250, 0, W / 2 + 250, 0); vg.addColorStop(0, '#fff'); vg.addColorStop(1, t.c2); ctx.fillStyle = c.eligible ? vg : '#ffb3c6'; ctx.font = `800 ${c.eligible ? 104 : 64}px ${D}`; ctx.fillText(valTxt, W / 2, 1105);
-    ctx.font = `600 18px ${B}`; const w1 = rankTxt ? ctx.measureText(rankTxt).width + 36 : 0, w2 = ctx.measureText(topTxt).width + 36; let x = W / 2 - (w1 + (w1 ? 12 : 0) + w2) / 2; if (rankTxt) x += pill(x, 1160, rankTxt, '#c4a9f5') + 12; pill(x, 1160, topTxt, t.c2);
-    foot(1290);
+    ctx.font = `600 18px ${B}`; const w1 = rankTxt ? ctx.measureText(rankTxt).width + 36 : 0, w2 = ctx.measureText(topTxt).width + 36; const lvl = 'Pass Level ' + JXP.levelFor(Math.max(...state.results.map((r) => r.points || 0))).level, w3 = ctx.measureText(lvl).width + 36; let x = W / 2 - (w1 + (w1 ? 12 : 0) + w2 + 12 + w3) / 2; if (rankTxt) x += pill(x, 1160, rankTxt, '#c4a9f5') + 12; x += pill(x, 1160, topTxt, t.c2) + 12; pill(x, 1160, lvl, '#fff');
+    ctx.fillStyle = '#7c6aa4'; ctx.font = `500 16px "JetBrains Mono", Menlo, monospace`; ctx.textAlign = 'center'; ctx.fillText(state.results.map((r) => (r.chain === 'solana' ? 'SOL ' : 'EVM ') + (state.mask ? maskAddr(r.address) : short(r.address))).join('   ·   '), W / 2, 1240);
+    foot(1295);
   }
   return cv;
 }
@@ -306,7 +324,7 @@ $('shareX').addEventListener('click', () => { const c = calc(); const text = `I'
 
   // --- sound (Web Audio, synthesized; nothing to download)
   const S = { on: false, ctx: null, whir: null, whirGain: null, whirFilter: null, master: null };
-  try { S.on = localStorage.getItem('jxp_snd') === '1'; } catch {}
+  S.on = true; try { S.on = localStorage.getItem('jxp_snd') !== '0'; } catch {}
   function ensureAudio() {
     if (S.ctx) { if (S.ctx.state === 'suspended') S.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; const ctx = S.ctx = new AC();
@@ -353,7 +371,7 @@ $('shareX').addEventListener('click', () => { const c = calc(); const text = `I'
   box.addEventListener('pointerdown', (e) => {
     dragging = true; box.setPointerCapture(e.pointerId); el.classList.add('grabbing'); box.classList.add('grab');
     const c = center(); lastA = angleOf(e, c); lastT = performance.now(); samples = []; grabX = (e.clientX - c.x) / c.r; grabY = (e.clientY - c.y) / c.r;
-    if (S.on) { ensureAudio(); thud(); } if (navigator.vibrate) navigator.vibrate(8);
+    if (S.on) { ensureAudio(); if (S.master) S.master.gain.setTargetAtTime(.9, S.ctx.currentTime, .05); thud(); } if (navigator.vibrate) navigator.vibrate(8);
   });
   box.addEventListener('pointermove', (e) => {
     if (!dragging) return; const c = center(), a = angleOf(e, c), t = performance.now(); let d = a - lastA; if (d > 180) d -= 360; if (d < -180) d += 360;
