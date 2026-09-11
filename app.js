@@ -277,34 +277,60 @@ async function drawCard() {
   const pill = (x, y, text, color) => { ctx.font = `600 18px ${B}`; const w = ctx.measureText(text).width + 36; ctx.fillStyle = 'rgba(255,255,255,.08)'; rr(ctx, x, y, w, 40, 20); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.fillText(text, x + 18, y + 27); return w; };
   const topTxt = c.best ? 'Top ' + fmtTop(c.best.position / SNAPSHOT.wallets * 100) : 'Unranked', rankTxt = c.best ? `Rank #${fmtInt(c.best.position)}` : '', valTxt = c.eligible ? fmtMoney(c.value) : 'Not eligible';
   const sub = `AT ${fmtMoney(state.fdv)} FDV · ${pctText(state.pct)} AIRDROP · ${eligSummary().toUpperCase()}`;
+  const lv = JXP.levelFor(Math.max(...state.results.map((r) => r.points || 0)));
+  const walletLine = state.results.map((r) => (r.chain === 'solana' ? 'SOL ' : 'EVM ') + (state.mask ? maskAddr(r.address) : short(r.address))).join('   ·   ');
+  const markImg = await svgImage(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' width='400' height='400'><g fill='#fff'><path d='${JXP.LOGO.pink}'/><path d='${JXP.LOGO.lav}'/></g></svg>`);
+  // stat tile: label + big value, tier-tinted left rule
+  const tile = (x, y, w, h, label, val, color = '#fff', big = 34) => {
+    ctx.fillStyle = 'rgba(255,255,255,.045)'; rr(ctx, x, y, w, h, 18); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = t.c2; rr(ctx, x + 14, y + 16, 3, h - 32, 2); ctx.fill();
+    ctx.textAlign = 'left'; ctx.fillStyle = '#9d8fc4'; ctx.font = `600 13px ${B}`; ctx.fillText(label.toUpperCase(), x + 30, y + 30);
+    ctx.fillStyle = color; ctx.font = `800 ${big}px ${D}`; ctx.fillText(val, x + 28, y + h - 22);
+  };
+  const accent = (x1, x2, y) => { const lg = ctx.createLinearGradient(x1, 0, x2, 0); lg.addColorStop(0, t.c2); lg.addColorStop(.6, 'rgba(255,255,255,.15)'); lg.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = lg; ctx.fillRect(x1, y, x2 - x1, 2); };
   if (!vertical) {
     header(70, 60);
+    // top-right: snapshot tag
+    ctx.textAlign = 'right'; ctx.fillStyle = '#7c6aa4'; ctx.font = `600 14px ${B}`; ctx.fillText(`SNAPSHOT ${SNAPSHOT.date.toUpperCase()}`, W - 70, 95); ctx.textAlign = 'left';
+    accent(70, W - 70, 148);
+    // watermark mark behind the tiles
+    ctx.save(); ctx.globalAlpha = .05; ctx.translate(W - 60, 300); ctx.rotate(-.18); ctx.drawImage(markImg, -230, -160, 460, 460); ctx.restore();
     // left: emblem + tier
-    ctx.drawImage(em, 70, 150, 300, 300);
-    ctx.fillStyle = '#b6a7d8'; ctx.font = `600 16px ${B}`; ctx.textAlign = 'center'; ctx.fillText(`TIER ${t.id} / 10 · ${topTxt.toUpperCase()}`, 220, 480);
-    const tg = ctx.createLinearGradient(100, 0, 340, 0); tg.addColorStop(0, '#fff'); tg.addColorStop(1, t.c2); ctx.fillStyle = tg; ctx.font = `800 46px ${D}`; ctx.fillText(t.name, 220, 530);
-    // divider
-    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(420, 150); ctx.lineTo(420, 560); ctx.stroke();
-    // right: numbers
-    ctx.textAlign = 'left'; ctx.fillStyle = '#b6a7d8'; ctx.font = `600 18px ${B}`; ctx.fillText((state.results.length > 1 ? `COMBINED · ${state.results.length} WALLETS` : 'MY JUMPER XP'), 470, 190);
-    ctx.fillStyle = '#fff'; ctx.font = `800 118px ${D}`; ctx.fillText(fmtInt(c.xp), 464, 300);
-    ctx.fillStyle = '#b6a7d8'; ctx.font = `600 18px ${B}`; ctx.fillText(sub, 470, 355);
-    const vg = ctx.createLinearGradient(470, 0, 1000, 0); vg.addColorStop(0, '#fff'); vg.addColorStop(1, t.c2); ctx.fillStyle = c.eligible ? vg : '#ffb3c6'; ctx.font = `800 ${c.eligible ? 84 : 56}px ${D}`; ctx.fillText(valTxt, 464, 445);
-    let x = 470; if (rankTxt) x += pill(x, 490, rankTxt, '#c4a9f5') + 12; x += pill(x, 490, topTxt, t.c2) + 12; pill(x, 490, 'Pass Level ' + JXP.levelFor(Math.max(...state.results.map((r) => r.points || 0))).level, '#fff');
-    ctx.fillStyle = '#7c6aa4'; ctx.font = `500 15px "JetBrains Mono", Menlo, monospace`; ctx.textAlign = 'left'; ctx.fillText(state.results.map((r) => (r.chain === 'solana' ? 'SOL ' : 'EVM ') + (state.mask ? maskAddr(r.address) : short(r.address))).join('   ·   '), 472, 552);
+    ctx.drawImage(em, 67, 166, 300, 300);
+    ctx.fillStyle = '#9d8fc4'; ctx.font = `600 15px ${B}`; ctx.textAlign = 'center'; ctx.fillText(`TIER ${t.id} / 10 · ${topTxt.toUpperCase()}`, 217, 494);
+    const tg = ctx.createLinearGradient(100, 0, 340, 0); tg.addColorStop(0, '#fff'); tg.addColorStop(1, t.c2); ctx.fillStyle = tg; ctx.font = `800 48px ${D}`; ctx.fillText(t.name, 217, 542);
+    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(408, 180); ctx.lineTo(408, 548); ctx.stroke();
+    // middle: the two numbers
+    ctx.textAlign = 'left'; ctx.fillStyle = '#9d8fc4'; ctx.font = `600 15px ${B}`; ctx.fillText((state.results.length > 1 ? `COMBINED · ${state.results.length} WALLETS` : 'MY JUMPER XP'), 452, 200);
+    ctx.fillStyle = '#fff'; ctx.font = `800 112px ${D}`; ctx.fillText(fmtInt(c.xp), 446, 305);
+    { ctx.font = `800 112px ${D}`; const xw = ctx.measureText(fmtInt(c.xp)).width; ctx.fillStyle = '#9d8fc4'; ctx.font = `700 22px ${D}`; ctx.fillText('XP', 446 + xw + 14, 300); }
+    ctx.fillStyle = '#9d8fc4'; ctx.font = `600 14px ${B}`; ctx.fillText(sub, 452, 350);
+    const vg = ctx.createLinearGradient(450, 0, 850, 0); vg.addColorStop(0, '#fff'); vg.addColorStop(1, t.c2); ctx.fillStyle = c.eligible ? vg : '#ffb3c6'; ctx.font = `800 ${c.eligible ? 82 : 52}px ${D}`; ctx.fillText(valTxt, 446, 440);
+    ctx.fillStyle = '#7c6aa4'; ctx.font = `500 14px "JetBrains Mono", Menlo, monospace`; ctx.fillText(walletLine, 452, 486);
+    // right: stat tiles
+    const tx = 878, tw = 252;
+    tile(tx, 176, tw, 96, 'Leaderboard rank', c.best ? '#' + fmtInt(c.best.position) : 'Unranked', '#fff', 34);
+    tile(tx, 284, tw, 96, 'Percentile', c.best ? 'Top ' + fmtTop(c.best.position / SNAPSHOT.wallets * 100) : '—', t.c2, 34);
+    tile(tx, 392, tw, 96, 'Jumper Pass', 'Level ' + lv.level, '#fff', 34);
     foot(585);
   } else {
     header(70, 64);
-    ctx.drawImage(em, W / 2 - 200, 170, 400, 400);
-    ctx.fillStyle = '#b6a7d8'; ctx.font = `600 20px ${B}`; ctx.textAlign = 'center'; ctx.fillText(`TIER ${t.id} / 10 · ${topTxt.toUpperCase()}`, W / 2, 610);
-    const tg = ctx.createLinearGradient(W / 2 - 150, 0, W / 2 + 150, 0); tg.addColorStop(0, '#fff'); tg.addColorStop(1, t.c2); ctx.fillStyle = tg; ctx.font = `800 64px ${D}`; ctx.fillText(t.name, W / 2, 680);
-    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.beginPath(); ctx.moveTo(110, 730); ctx.lineTo(W - 110, 730); ctx.stroke();
-    ctx.fillStyle = '#b6a7d8'; ctx.font = `600 20px ${B}`; ctx.fillText((state.results.length > 1 ? `COMBINED · ${state.results.length} WALLETS` : 'MY JUMPER XP'), W / 2, 790);
-    ctx.fillStyle = '#fff'; ctx.font = `800 150px ${D}`; ctx.fillText(fmtInt(c.xp), W / 2, 930);
-    ctx.fillStyle = '#b6a7d8'; ctx.font = `600 18px ${B}`; ctx.fillText(sub, W / 2, 990);
-    const vg = ctx.createLinearGradient(W / 2 - 250, 0, W / 2 + 250, 0); vg.addColorStop(0, '#fff'); vg.addColorStop(1, t.c2); ctx.fillStyle = c.eligible ? vg : '#ffb3c6'; ctx.font = `800 ${c.eligible ? 104 : 64}px ${D}`; ctx.fillText(valTxt, W / 2, 1105);
-    ctx.font = `600 18px ${B}`; const w1 = rankTxt ? ctx.measureText(rankTxt).width + 36 : 0, w2 = ctx.measureText(topTxt).width + 36; const lvl = 'Pass Level ' + JXP.levelFor(Math.max(...state.results.map((r) => r.points || 0))).level, w3 = ctx.measureText(lvl).width + 36; let x = W / 2 - (w1 + (w1 ? 12 : 0) + w2 + 12 + w3) / 2; if (rankTxt) x += pill(x, 1160, rankTxt, '#c4a9f5') + 12; x += pill(x, 1160, topTxt, t.c2) + 12; pill(x, 1160, lvl, '#fff');
-    ctx.fillStyle = '#7c6aa4'; ctx.font = `500 16px "JetBrains Mono", Menlo, monospace`; ctx.textAlign = 'center'; ctx.fillText(state.results.map((r) => (r.chain === 'solana' ? 'SOL ' : 'EVM ') + (state.mask ? maskAddr(r.address) : short(r.address))).join('   ·   '), W / 2, 1240);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#7c6aa4'; ctx.font = `600 13px ${B}`; ctx.fillText(`SNAPSHOT ${SNAPSHOT.date.toUpperCase()}`, W - 70, 100); ctx.textAlign = 'left';
+    accent(70, W - 70, 152);
+    ctx.save(); ctx.globalAlpha = .05; ctx.translate(W - 40, 520); ctx.rotate(-.18); ctx.drawImage(markImg, -260, -200, 520, 520); ctx.restore();
+    ctx.drawImage(em, W / 2 - 190, 178, 380, 380);
+    ctx.fillStyle = '#9d8fc4'; ctx.font = `600 18px ${B}`; ctx.textAlign = 'center'; ctx.fillText(`TIER ${t.id} / 10 · ${topTxt.toUpperCase()}`, W / 2, 596);
+    const tg = ctx.createLinearGradient(W / 2 - 150, 0, W / 2 + 150, 0); tg.addColorStop(0, '#fff'); tg.addColorStop(1, t.c2); ctx.fillStyle = tg; ctx.font = `800 62px ${D}`; ctx.fillText(t.name, W / 2, 662);
+    ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.beginPath(); ctx.moveTo(110, 712); ctx.lineTo(W - 110, 712); ctx.stroke();
+    ctx.fillStyle = '#9d8fc4'; ctx.font = `600 18px ${B}`; ctx.fillText((state.results.length > 1 ? `COMBINED · ${state.results.length} WALLETS` : 'MY JUMPER XP'), W / 2, 768);
+    ctx.fillStyle = '#fff'; ctx.font = `800 140px ${D}`; ctx.fillText(fmtInt(c.xp), W / 2, 898);
+    ctx.fillStyle = '#9d8fc4'; ctx.font = `600 16px ${B}`; ctx.fillText(sub, W / 2, 946);
+    const vg = ctx.createLinearGradient(W / 2 - 250, 0, W / 2 + 250, 0); vg.addColorStop(0, '#fff'); vg.addColorStop(1, t.c2); ctx.fillStyle = c.eligible ? vg : '#ffb3c6'; ctx.font = `800 ${c.eligible ? 100 : 60}px ${D}`; ctx.fillText(valTxt, W / 2, 1052);
+    const tw3 = (W - 140 - 24) / 3;
+    tile(70, 1096, tw3, 92, 'Rank', c.best ? '#' + fmtInt(c.best.position) : '—', '#fff', 30);
+    tile(70 + tw3 + 12, 1096, tw3, 92, 'Percentile', c.best ? 'Top ' + fmtTop(c.best.position / SNAPSHOT.wallets * 100) : '—', t.c2, 30);
+    tile(70 + (tw3 + 12) * 2, 1096, tw3, 92, 'Pass', 'Level ' + lv.level, '#fff', 30);
+    ctx.fillStyle = '#7c6aa4'; ctx.font = `500 15px "JetBrains Mono", Menlo, monospace`; ctx.textAlign = 'center'; ctx.fillText(walletLine, W / 2, 1240);
     foot(1295);
   }
   return cv;
