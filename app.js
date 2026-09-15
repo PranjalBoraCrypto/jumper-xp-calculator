@@ -31,7 +31,7 @@ const pctText = (v) => (v % 1 ? v.toFixed(1) : String(v)) + '%';
 $('hWallets').textContent = fmtBig(SNAPSHOT.wallets); $('fWallets').textContent = fmtInt(SNAPSHOT.wallets); $('fDate').textContent = SNAPSHOT.date; $('eqTotal').textContent = fmtBig(SNAPSHOT.totalXp);
 
 /* ---------- ticker ---------- */
-const items = [`<b>#1</b> wallet holds <em>7,813 XP</em>`, `<b>${fmtInt(SNAPSHOT.wallets)}</b> wallets with XP`, `median wallet <em>30 XP</em>`, `<b>${fmtBig(SNAPSHOT.totalXp)}</b> total XP on the board`, `rank 100 has <em>4,832 XP</em>`, `snapshot <b>${SNAPSHOT.date}</b>`, `EVM <b>+</b> Solana supported`, `no token announced <em>yet</em>`];
+const items = [`<b>#1</b> wallet holds <em>7,813 XP</em>`, `<b>${fmtInt(SNAPSHOT.wallets)}</b> wallets with XP`, `median wallet <em>30 XP</em>`, `<b>${fmtBig(SNAPSHOT.totalXp)}</b> total XP on the board`, `rank 100 has <em>4,832 XP</em>`, `snapshot <b>${SNAPSHOT.date}</b>`, `EVM <b>+</b> Solana supported`, `no token announced <em>yet</em>`, `Jumper waitlist is <em>live</em>`];
 const tick = $('ticker'); tick.innerHTML = Array(4).fill(items.map((i) => `<span>${i}</span>`).join('')).join('');
 
 /* ---------- scroll engine: lerped scroll, parallax, nav, ticker ---------- */
@@ -233,7 +233,7 @@ let lastXp = -1;
 function render(animate) {
   if (!state.results) return;
   const c = calc(), multi = state.results.length > 1, t = c.tier;
-  $('resultEmpty').style.display = 'none'; $('resultBody').style.display = 'grid'; $('shareRow').classList.add('show'); $('shareHint').classList.add('show');
+  $('resultEmpty').style.display = 'none'; $('resultBody').style.display = 'grid'; $('shareRow').classList.add('show'); $('shareHint').classList.add('show'); $('nextStep').classList.add('show');
   const card = $('result'); card.style.setProperty('--tc1', t.c1); card.style.setProperty('--tc2', t.c2); card.style.setProperty('--tglow', t.glow);
   if (card.dataset.tier !== String(t.id)) { $('emblem').innerHTML = JXP.emblemSVG(t, 170); card.dataset.tier = t.id; }
   $('tierNum').textContent = `TIER ${t.id} / 10`; $('tierName').textContent = t.name; $('tierLine').textContent = t.line;
@@ -372,6 +372,8 @@ async function drawCard() {
 const toBlob = (cv) => new Promise((r) => cv.toBlob(r, 'image/png'));
 $('dlCard').addEventListener('click', async () => { track('share_download'); const b = await toBlob(await drawCard()); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'jumper-xp-card.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
 $('copyCard').addEventListener('click', async () => { track('share_copy'); const b = $('copyCard'); try { const cv = await drawCard(); await navigator.clipboard.write([new ClipboardItem({ 'image/png': await toBlob(cv) })]); b.textContent = 'Copied!'; } catch { b.textContent = 'Copy not supported'; } setTimeout(() => (b.textContent = 'Copy image'), 1800); });
+$('nextStep').addEventListener('click', () => track('waitlist_click', { from: 'result' }));
+$('navWl').addEventListener('click', () => track('waitlist_click', { from: 'nav' }));
 $('shareX').addEventListener('click', () => { track('share_x'); const c = calc(); const text = `I'm a ${c.tier.name} on Jumper — ${fmtInt(c.xp)} XP${c.best ? `, rank #${fmtInt(c.best.position)}` : ''}. Worth ~${fmtMoney(c.value)} at ${fmtMoney(state.fdv)} FDV with a ${pctText(state.pct)} airdrop.\n\nWhat tier are you? 👇\n${location.origin}`; open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank', 'noopener'); });
 
 /* ---------- fidget spinner: physics + 3D grab + synthesized sound ---------- */
